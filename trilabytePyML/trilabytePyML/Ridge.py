@@ -37,9 +37,8 @@ if __name__ == '__main__':
     print("Usage: python -m trilabytePyML.Ridge [json options] [csv source data] [output csv file]")
     print("-------------------------------")
   
-#     fileName = 'c:/temp/retail_unit_demand_with_outliers.csv'
-#     fileName = 'c:/temp/retail_unit_demand.csv'
-#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    fileName = 'c:/temp/iris_with_role_and_split.csv'
+    outputFileName = 'c:/temp/iris_ridge.csv'
     jsonFileName = 'c:/temp/iris_ridge.json'
     buildSampleoptionsJSONFile(jsonFileName)
     
@@ -51,18 +50,19 @@ if __name__ == '__main__':
         options = json.load(fp)
      
     print(options)
-#     
-#     frame = pd.read_csv(fileName)
-#         
-#     frame.sort_values(by=options['sortColumns'], ascending=True, inplace=True)
-#     
-#     frames = list(frame.groupby(by=options['splitColumns']))
-#     
-#     outputFrame = None
-# 
-#     for frame in frames:
-#         frame = frame[1]
-#         frame.reset_index(drop=True, inplace=True)
+
+    frame = pd.read_csv(fileName)
+    frame.sort_values(by=options['splitColumns'], ascending=True, inplace=True)
+     
+    frames = list(frame.groupby(by=options['splitColumns']))
+     
+    outputFrame = None
+ 
+    for frame in frames:
+        frame = frame[1]
+        frame.reset_index(drop=True, inplace=True)
+
+        print(frame.head(10));
 #         
 #         if options['seasonality'] == 'Auto':
 #             options['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
