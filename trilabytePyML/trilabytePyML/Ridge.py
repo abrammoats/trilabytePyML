@@ -12,10 +12,11 @@ import sys
 import pandas as pd 
 from sklearn.linear_model import Ridge
 
+
 def buildSampleoptionsJSONFile(jsonFileName):
     options = dict()
     options['splitColumns'] = ['Split']
-    options['predictorColumns'] = ['Sepal.Width','Sepal.Length','Petal.Width']
+    options['predictorColumns'] = ['Sepal.Width', 'Sepal.Length', 'Petal.Width']
     options['roleColumn'] = ['Role']
     options['targetColumn'] = 'Petal.Length' 
     options['ridgeAlpha'] = 1.0
@@ -24,6 +25,7 @@ def buildSampleoptionsJSONFile(jsonFileName):
     
     with open(jsonFileName, 'w') as fp:
         json.dump(options, fp)
+
         
 def predict(frame, options):
     fdict = dict()
@@ -45,6 +47,7 @@ def predict(frame, options):
     fdict['frame'] = frame
     return(fdict)
 
+
 ##############################
 # Main
 ##############################
@@ -62,6 +65,10 @@ if __name__ == '__main__':
 #     outputFileName = 'c:/temp/iris_ridge.csv'
 #     jsonFileName = 'c:/temp/iris_ridge.json'
 #     buildSampleoptionsJSONFile(jsonFileName)
+
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
     
     jsonFileName = sys.argv[1]
     fileName = sys.argv[2]
@@ -71,7 +78,7 @@ if __name__ == '__main__':
         options = json.load(fp)
     
     print('Options:') 
-    print(options,'\n')
+    print(options, '\n')
 
     frame = pd.read_csv(fileName)
     frames = list(frame.groupby(by=options['splitColumns']))

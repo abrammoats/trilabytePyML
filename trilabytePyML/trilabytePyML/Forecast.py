@@ -170,7 +170,5 @@ class Forecast:
         frame['X_UPI'] = frame['X_FORECAST'] + predictionInterval 
         
         return fdict
-        
-#         
-#       
+    
         
