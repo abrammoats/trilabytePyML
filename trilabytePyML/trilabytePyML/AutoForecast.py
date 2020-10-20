@@ -108,6 +108,11 @@ if __name__ == '__main__':
 #     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
 #     buildSampleoptionsJSONFile(jsonFileName)
     
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
+        
+    
     jsonFileName = sys.argv[1]
     fileName = sys.argv[2]
     outputFileName = sys.argv[3]
