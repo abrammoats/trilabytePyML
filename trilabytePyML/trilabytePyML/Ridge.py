@@ -58,10 +58,17 @@ if __name__ == '__main__':
     print("Usage: python -m trilabytePyML.Ridge [json options] [csv source data] [output csv file]")
     print("-------------------------------")
   
+<<<<<<< HEAD
 #     fileName = 'c:/temp/iris_with_role_and_split.csv'
 #     jsonFileName = 'c:/temp/iris_ridge.json'
 #     buildSampleoptionsJSONFile(jsonFileName)
 #     outputFileName = 'c:/temp/iris_ridge_output.csv'
+=======
+    fileName = 'c:/temp/iris_with_role_and_split.csv'
+    outputFileName = 'c:/temp/iris_ridge.csv'
+    jsonFileName = 'c:/temp/iris_ridge.json'
+    buildSampleoptionsJSONFile(jsonFileName)
+>>>>>>> branch 'master' of https://github.com/smutchler/trilabytePyML
     
     jsonFileName = sys.argv[1]
     fileName = sys.argv[2]
@@ -87,6 +94,40 @@ if __name__ == '__main__':
          
         outputFrame = frame if outputFrame is None else outputFrame.append(frame)
      
+<<<<<<< HEAD
     outputFrame.to_csv(outputFileName, index=False)
      
     print("Forecast(s) complete...")
+=======
+    print(options)
+
+    frame = pd.read_csv(fileName)
+    frame.sort_values(by=options['splitColumns'], ascending=True, inplace=True)
+     
+    frames = list(frame.groupby(by=options['splitColumns']))
+     
+    outputFrame = None
+ 
+    for frame in frames:
+        frame = frame[1]
+        frame.reset_index(drop=True, inplace=True)
+
+        print(frame.head(10));
+#         
+#         if options['seasonality'] == 'Auto':
+#             options['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
+#         
+#         if ('autoDetectOutliers' in options and options['autoDetectOutliers']):
+#             frame = detectOutliers(frame, options.copy())
+#             options['outlierColumn'] = 'OUTLIER'
+#         
+#         model = Forecast()
+#         fdict = model.forecast(frame, options.copy())
+#         frame = fdict['frame']
+#         
+#         outputFrame = frame if outputFrame is None else outputFrame.append(frame)
+#     
+#     outputFrame.to_csv(outputFileName, index=False)
+#     
+#     print("Forecast(s) complete...")
+>>>>>>> branch 'master' of https://github.com/smutchler/trilabytePyML
