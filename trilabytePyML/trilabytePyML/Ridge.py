@@ -30,7 +30,7 @@ def buildSampleoptionsJSONFile(jsonFileName):
 def predict(frame, options):
     fdict = dict()
     
-    trainFrame = frame.loc[frame[options['roleColumn']] == 'TRAIN']
+    trainFrame = frame.loc[frame[options['roleColumn']] == 'TRAINING']
     
     x = trainFrame[options['predictorColumns']]
     y = trainFrame[options['targetColumn']]
@@ -67,7 +67,7 @@ def splitIntoFramesAndPredict(frame, options):
 ##############################
 if __name__ == '__main__':
     
-    print("Ridge - Stacked Data with Role Definition (TRAIN,SCORE)")
+    print("Ridge - Stacked Data with Role Definition (TRAINING,SCORING)")
     print("-------------------------------")
     print("Required Librarires:")
     print("pip install pandas loess scipy numpy scikit-learn")
