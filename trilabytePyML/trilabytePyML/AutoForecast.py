@@ -30,7 +30,7 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options['adjustSeasonalityBasedOnTrend'] = True 
     options['adjustSeasonalityTrendColumn'] = 'X_TREND' 
     
-    # print(json.dumps(options))
+    # print(json.dumps(options, indent=2))
     
     with open(jsonFileName, 'w') as fp:
         json.dump(options, fp)
