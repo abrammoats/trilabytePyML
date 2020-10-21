@@ -1,1 +1,1 @@
-{"splitColumns": ["Split"], "predictorColumns": ["Sepal.Width", "Sepal.Length", "Petal.Width"], "roleColumn": ["Role"], "targetColumn": "Petal.Length", "ridgeAlpha": 1.0}
+{"splitColumns": ["Split"], "predictorColumns": ["Sepal.Width", "Sepal.Length", "Petal.Width"], "roleColumn": "Role", "targetColumn": "Petal.Length", "ridgeAlpha": 1.0}

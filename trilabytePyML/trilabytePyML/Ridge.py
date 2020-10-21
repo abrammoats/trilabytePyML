@@ -17,7 +17,7 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options = dict()
     options['splitColumns'] = ['Split']
     options['predictorColumns'] = ['Sepal.Width', 'Sepal.Length', 'Petal.Width']
-    options['roleColumn'] = ['Role']
+    options['roleColumn'] = 'Role'
     options['targetColumn'] = 'Petal.Length' 
     options['ridgeAlpha'] = 1.0
     
@@ -30,8 +30,7 @@ def buildSampleoptionsJSONFile(jsonFileName):
 def predict(frame, options):
     fdict = dict()
     
-    roleCol = options['roleColumn'][0]
-    trainFrame = frame.loc[frame[roleCol] == 'TRAIN']
+    trainFrame = frame.loc[frame[options['roleColumn']] == 'TRAIN']
     
     x = trainFrame[options['predictorColumns']]
     y = trainFrame[options['targetColumn']]
@@ -96,5 +95,5 @@ if __name__ == '__main__':
      
     outputFrame.to_csv(outputFileName, index=False)
      
-    print("Forecast(s) complete...")
+    print("Predictions complete...")
 
