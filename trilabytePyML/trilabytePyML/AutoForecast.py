@@ -12,7 +12,6 @@ import sys
 import pandas as pd 
 from trilabytePyML.Forecast import Forecast
 
-
 def buildSampleoptionsJSONFile(jsonFileName):
     options = dict()
     options['sortColumns'] = ['SKU', 'STORE_NUMBER', 'CAL_YEAR', 'CAL_MONTH']
@@ -89,41 +88,7 @@ def findOptimalSeasonality(frame, options):
     else:
         return "Multiplicative"
 
-##############################
-# Main
-##############################
-if __name__ == '__main__':
-    
-    print("AutoForecast")
-    print("-------------------------------")
-    print("Required Librarires:")
-    print("pip install pandas loess scipy numpy scikit-learn")
-    print("-------------------------------")
-    print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
-    print("-------------------------------")
-  
-#     fileName = 'c:/temp/retail_unit_demand_with_outliers.csv'
-#     fileName = 'c:/temp/retail_unit_demand.csv'
-#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
-#     buildSampleoptionsJSONFile(jsonFileName)
-    
-    if (len(sys.argv) < 3):
-        print("Error: Insufficient arguments")
-        sys.exit(-1)
-        
-    
-    jsonFileName = sys.argv[1]
-    fileName = sys.argv[2]
-    outputFileName = sys.argv[3]
-    
-    with open(jsonFileName, 'r') as fp:
-        options = json.load(fp)
-    
-#     print(options)
-    
-    frame = pd.read_csv(fileName)
-        
+def splitFramesAndForecast(frame, options):
     frame.sort_values(by=options['sortColumns'], ascending=True, inplace=True)
     
     frames = list(frame.groupby(by=options['splitColumns']))
@@ -147,6 +112,47 @@ if __name__ == '__main__':
         
         outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     
+    return outputFrame
+
+##############################
+# Main
+##############################
+if __name__ == '__main__':
+    
+    print("AutoForecast")
+    print("-------------------------------")
+    print("Required Librarires:")
+    print("pip install pandas loess scipy numpy scikit-learn")
+    print("-------------------------------")
+    print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
+    print("-------------------------------")
+  
+#     fileName = 'c:/temp/retail_unit_demand_with_outliers.csv'
+#     fileName = 'c:/temp/retail_unit_demand.csv'
+#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
+        
+    
+    jsonFileName = sys.argv[1]
+    fileName = sys.argv[2]
+    outputFileName = sys.argv[3]
+    
+    with open(jsonFileName, 'r') as fp:
+        options = json.load(fp)
+    
+    print('Options:') 
+    print(json.dumps(options,indent=2), '\n')
+    
+    frame = pd.read_csv(fileName)
+        
+    outputFrame = splitFramesAndForecast(frame, options)
+    
     outputFrame.to_csv(outputFileName, index=False)
+    
+    print("Output file: ", outputFileName)
     
     print("Forecast(s) complete...")
