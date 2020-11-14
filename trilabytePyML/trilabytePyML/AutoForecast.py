@@ -30,6 +30,8 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options['adjustSeasonalityBasedOnTrend'] = True 
     options['adjustSeasonalityTrendColumn'] = 'X_TREND' 
     
+    options['forceNonNegative'] = False
+    
     # print(json.dumps(options, indent=2))
     
     with open(jsonFileName, 'w') as fp:
@@ -74,6 +76,14 @@ def findMAPE(frame, options, seasonality):
     return  model.forecast(frame.copy(), options)['MAPE']
 
 def findOptimalSeasonality(frame, options):
+    nonNullRowCount = frame[options['targetColumn']].count()
+    periodicity = options['periodicity']
+    
+#     print("periodicity:", periodicity, "nonNullRowCount:", nonNullRowCount)
+    
+    if nonNullRowCount < periodicity:
+        return "None"
+    
     noSeasonalityMAPE = findMAPE(frame, options.copy(), 'None')
     additiveMAPE = findMAPE(frame, options.copy(), 'Additive')
     multiplicativeMAPE = findMAPE(frame, options.copy(), 'Multiplicative')
@@ -99,15 +109,17 @@ def splitFramesAndForecast(frame, options):
         frame = frame[1]
         frame.reset_index(drop=True, inplace=True)
         
-        if options['seasonality'] == 'Auto':
-            options['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
+        currentOptions = options.copy()
         
-        if ('autoDetectOutliers' in options and options['autoDetectOutliers']):
-            frame = detectOutliers(frame, options.copy())
-            options['outlierColumn'] = 'OUTLIER'
+        if options['seasonality'] == 'Auto':
+            currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
+        
+        if ('autoDetectOutliers' in currentOptions and currentOptions['autoDetectOutliers']):
+            frame = detectOutliers(frame, currentOptions.copy())
+            currentOptions['outlierColumn'] = 'OUTLIER'
         
         model = Forecast()
-        fdict = model.forecast(frame, options.copy())
+        fdict = model.forecast(frame, currentOptions.copy())
         frame = fdict['frame']
         
         outputFrame = frame if outputFrame is None else outputFrame.append(frame)
@@ -127,14 +139,14 @@ if __name__ == '__main__':
     print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
     print("-------------------------------")
   
-#     fileName = 'c:/temp/retail_unit_demand.csv'
+#     fileName = 'c:/temp/retail_unit_demand2.csv'
 #     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
 #     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
     if (len(sys.argv) < 3):
         print("Error: Insufficient arguments")
         sys.exit(-1)
-     
+       
     jsonFileName = sys.argv[1]
     fileName = sys.argv[2]
     outputFileName = sys.argv[3]
