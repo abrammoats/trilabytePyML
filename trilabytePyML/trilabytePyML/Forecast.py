@@ -83,6 +83,12 @@ class Forecast:
         historicalData = frame[fdict['historicalIdx']] 
         periodicity = fdict['options']['periodicity']
         
+        # short-circuit if none is chosen
+        if fdict['options']['seasonality'] == 'None':
+            frame['X_SEASONALITY'] = None
+            fdict['frame'] = frame
+            return fdict;
+        
         diffData = historicalData['X_TREND_DIFF' if fdict['options']['seasonality'] == 'Additive' else 'X_TREND_RATIO']
         
         trendCol = 'X_TREND' if not('adjustSeasonalityTrendColumn' in fdict['options']) else fdict['options']['adjustSeasonalityTrendColumn']
@@ -151,6 +157,8 @@ class Forecast:
                 
         fdict = self.calcSeasonality(fdict)
         
+        frame['X_SEASONALITY_TYPE'] = fdict['options']['seasonality']
+        
         if (fdict['options']['seasonality'] == 'Additive'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] + frame['X_TREND_PREDICTED']
         elif (fdict['options']['seasonality'] == 'Multiplicative'):
@@ -168,6 +176,11 @@ class Forecast:
 
         frame['X_LPI'] = frame['X_FORECAST'] - predictionInterval 
         frame['X_UPI'] = frame['X_FORECAST'] + predictionInterval 
+        
+        if 'forceNonNegative' in fdict['options'] and fdict['options']['forceNonNegative']:
+            frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
+            frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
+            frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
         
         return fdict
     
