@@ -16,7 +16,7 @@ from sklearn.linear_model import Ridge
 from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
 from scipy import stats
-
+from statistics import mean 
 
 class Forecast:
 
@@ -136,7 +136,7 @@ class Forecast:
                 #print('idx:',idx,'diffIdx:',diffIdx,'intercept:',model[0],'slope:',model[1],'x:',x,'yhat:',model[0] + model[1] * x)
                 seasonality.append(model[0] + model[1] * x)
         else:
-            #print("Using raw median diff values for seasonality")
+            #print("Using raw mean/median diff values for seasonality")
             medianVals = []
             for diffs in buckets:
                 medianVals.append(median(diffs))

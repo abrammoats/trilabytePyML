@@ -144,17 +144,17 @@ if __name__ == '__main__':
     print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
     print("-------------------------------")
   
-    fileName = 'c:/temp/retail_unit_demand2.csv'
-    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+#     fileName = 'c:/temp/retail_unit_demand2.csv'
+#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-#     if (len(sys.argv) < 3):
-#         print("Error: Insufficient arguments")
-#         sys.exit(-1)
-#        
-#     jsonFileName = sys.argv[1]
-#     fileName = sys.argv[2]
-#     outputFileName = sys.argv[3]
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
+        
+    jsonFileName = sys.argv[1]
+    fileName = sys.argv[2]
+    outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)
