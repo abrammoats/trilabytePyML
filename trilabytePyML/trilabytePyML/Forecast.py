@@ -19,6 +19,49 @@ from scipy import stats
 from statistics import mean 
 
 class Forecast:
+    
+    def preOutlierDetection(self, frame, options):
+        targetColumn = options['targetColumn']
+        
+        frame['X_INDEX'] = frame.index.values
+        
+        # split the data into past/future based on null in target column 
+        nullIdx = frame[targetColumn].isnull()
+        futureData = frame[nullIdx]
+        historicalIdx = list(map(operator.not_, nullIdx))
+        historicalData = frame[historicalIdx] 
+         
+        x = np.asarray(historicalData['X_INDEX'].tolist())    
+        y = np.asarray(historicalData[options['targetColumn']].tolist())
+        bandwidth = options['seasonalityBandwidth']
+        xout, yout, weights = lo.loess_1d(x, y, frac=bandwidth, degree=2)
+        
+        frame['X_TREND'] = np.append(yout, np.asarray(futureData[targetColumn].tolist())) 
+        frame['X_TREND_DIFF'] = frame[targetColumn] - frame['X_TREND']
+        
+        stdev = frame['X_TREND_DIFF'].std()
+        avg = frame['X_TREND_DIFF'].mean()
+        
+#         print('stdev:',stdev, 'mean:',avg)
+        
+        frame['X_OUTLIER'] = 0
+        for index, row in frame.iterrows():
+            diff = abs(frame['X_TREND_DIFF'][index])
+            if diff > avg + 3.0 * stdev:
+                if index > 0 and index <= frame.shape[0] - 1:
+                    frame[targetColumn][index] = mean([frame[targetColumn][index-1],frame[targetColumn][index+1]])
+                    frame['X_OUTLIER'][index] = 1
+                else:
+                    frame[targetColumn][index] = frame['X_TREND'][index]
+                    frame['X_OUTLIER'][index] = 1
+        
+        frame.drop(columns=['X_TREND', 'X_TREND_DIFF','X_INDEX'])
+        
+        fdict = dict()
+        fdict['frame'] = frame
+        fdict['options'] = options
+        
+        return fdict
 
     def prepare(self, frame, options):
         # create copy of target for modification (fill zeros with very small number)
@@ -151,6 +194,10 @@ class Forecast:
         return fdict
        
     def forecast(self, frame, options):
+        if options['autoDetectOutliers']:
+            fdict = self.preOutlierDetection(frame, options)
+            frame = fdict['frame']
+        
         fdict = self.prepare(frame, options)
         
         fdict = self.predictTrend(fdict)

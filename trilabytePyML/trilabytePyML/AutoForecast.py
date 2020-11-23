@@ -11,6 +11,7 @@ import json
 import sys
 import pandas as pd 
 from trilabytePyML.Forecast import Forecast
+import traceback 
 
 def buildSampleoptionsJSONFile(jsonFileName):
     options = dict()
@@ -115,19 +116,20 @@ def splitFramesAndForecast(frame, options):
                 if options['seasonality'] == 'Auto':
                     currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
                 
-                if ('autoDetectOutliers' in currentOptions and currentOptions['autoDetectOutliers']):
-                    frame = detectOutliers(frame, currentOptions.copy())
-                    currentOptions['outlierColumn'] = 'OUTLIER'
-                
+    #                 if ('autoDetectOutliers' in currentOptions and currentOptions['autoDetectOutliers']):
+    #                     frame = detectOutliers(frame, currentOptions.copy())
+    #                     currentOptions['outlierColumn'] = 'OUTLIER'
+            
                 model = Forecast()
                 fdict = model.forecast(frame, currentOptions.copy())
                 frame = fdict['frame']
                 frame['X_ERROR'] = None 
                 
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
+            
             except Exception as e:
                 frame['X_ERROR'] = e
-            
+    
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     return outputFrame
 
@@ -144,6 +146,8 @@ if __name__ == '__main__':
     print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
     print("-------------------------------")
   
+    pd.options.mode.chained_assignment = None  # default='warn'
+  
 #     fileName = 'c:/temp/retail_unit_demand2.csv'
 #     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
 #     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
@@ -151,7 +155,7 @@ if __name__ == '__main__':
     if (len(sys.argv) < 3):
         print("Error: Insufficient arguments")
         sys.exit(-1)
-        
+          
     jsonFileName = sys.argv[1]
     fileName = sys.argv[2]
     outputFileName = sys.argv[3]
