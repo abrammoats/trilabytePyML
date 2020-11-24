@@ -24,10 +24,10 @@ def buildSampleoptionsJSONFile(jsonFileName):
   
     # options['outlierColumn'] = 'OUTLIER'
     options['autoDetectOutliers'] = True
+    options['outlierStdevMultiplier'] = 3.0
    
     options['seasonalityBandwidth'] = 0.6
     options['ridgeAlpha'] = 1.0
-    options['minMAPEImprovmentForOutlier'] = 5.0
     options['adjustSeasonalityBasedOnTrend'] = True 
     options['adjustSeasonalityTrendColumn'] = 'X_TREND' 
     
@@ -37,38 +37,6 @@ def buildSampleoptionsJSONFile(jsonFileName):
     
     with open(jsonFileName, 'w') as fp:
         json.dump(options, fp)
-
-
-def detectOutliers(frame, options):
-    rowCount = frame.shape[0]
-
-    minMAPEImprovmentForOutlier = options['minMAPEImprovmentForOutlier']
-    outlierIndexes = []
-    
-    model = Forecast()
-    fdict = model.forecast(frame, options.copy())
-    baseMAPE = fdict['MAPE']
-    
-    for idx in range(rowCount):
-        tmp = frame.copy()
-        tmp['OUTLIER'] = 0
-        tmp.at[idx, 'OUTLIER'] = 1
-        tmpOptions = options.copy()
-        tmpOptions['outlierColumn'] = 'OUTLIER'
-        model = Forecast()
-        fdict = model.forecast(tmp, tmpOptions)
-        tmpMAPE = fdict['MAPE']
-#         print('base MAPE:', baseMAPE, 'test MAPE:', tmpMAPE, 'minMAPEImprovmentForOutlier:', minMAPEImprovmentForOutlier)
-        if baseMAPE >= (tmpMAPE + minMAPEImprovmentForOutlier):
-            outlierIndexes.append(idx)
-    
-#     print(outlierIndexes)
-    
-    frame['OUTLIER'] = 0
-    for idx in outlierIndexes:
-        frame.at[idx, 'OUTLIER'] = 1
-
-    return frame
 
 def findMAPE(frame, options, seasonality):
     options = options.copy()
@@ -115,10 +83,6 @@ def splitFramesAndForecast(frame, options):
                 
                 if options['seasonality'] == 'Auto':
                     currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
-                
-    #                 if ('autoDetectOutliers' in currentOptions and currentOptions['autoDetectOutliers']):
-    #                     frame = detectOutliers(frame, currentOptions.copy())
-    #                     currentOptions['outlierColumn'] = 'OUTLIER'
             
                 model = Forecast()
                 fdict = model.forecast(frame, currentOptions.copy())
@@ -128,10 +92,12 @@ def splitFramesAndForecast(frame, options):
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
             
             except Exception as e:
-                frame['X_ERROR'] = e
+                tb = traceback.format_exc().replace('\n', ' ')
+                frame['X_ERROR'] = tb
     
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     return outputFrame
+
 
 ##############################
 # Main
@@ -148,17 +114,17 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-#     fileName = 'c:/temp/retail_unit_demand2.csv'
-#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    fileName = 'c:/temp/retail_unit_demand2.csv'
+    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-    if (len(sys.argv) < 3):
-        print("Error: Insufficient arguments")
-        sys.exit(-1)
-          
-    jsonFileName = sys.argv[1]
-    fileName = sys.argv[2]
-    outputFileName = sys.argv[3]
+#     if (len(sys.argv) < 3):
+#         print("Error: Insufficient arguments")
+#         sys.exit(-1)
+#           
+#     jsonFileName = sys.argv[1]
+#     fileName = sys.argv[2]
+#     outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)

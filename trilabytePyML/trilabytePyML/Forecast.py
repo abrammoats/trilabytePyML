@@ -18,12 +18,14 @@ from trilabytePyML.stats.Statistics import calcPredictionInterval
 from scipy import stats
 from statistics import mean 
 
+
 class Forecast:
     
     def preOutlierDetection(self, frame, options):
-        targetColumn = options['targetColumn']
+        targetColumn = options['targetColumn'] 
         
         frame['X_INDEX'] = frame.index.values
+        frame['X_INTERPOLATED'] = frame[targetColumn]
         
         # split the data into past/future based on null in target column 
         nullIdx = frame[targetColumn].isnull()
@@ -44,18 +46,22 @@ class Forecast:
         
 #         print('stdev:',stdev, 'mean:',avg)
         
+        mult = 3.0 
+        if 'outlierStdevMultiplier' in options:
+            mult = options['outlierStdevMultiplier'] 
+        
         frame['X_OUTLIER'] = 0
         for index, row in frame.iterrows():
             diff = abs(frame['X_TREND_DIFF'][index])
-            if diff > avg + 3.0 * stdev:
+            if diff > avg + mult * stdev:
                 if index > 0 and index <= frame.shape[0] - 1:
-                    frame[targetColumn][index] = mean([frame[targetColumn][index-1],frame[targetColumn][index+1]])
+                    frame['X_INTERPOLATED'][index] = mean([frame['X_INTERPOLATED'][index - 1], frame['X_INTERPOLATED'][index + 1]])
                     frame['X_OUTLIER'][index] = 1
                 else:
-                    frame[targetColumn][index] = frame['X_TREND'][index]
+                    frame['X_INTERPOLATED'][index] = frame['X_TREND'][index]
                     frame['X_OUTLIER'][index] = 1
         
-        frame.drop(columns=['X_TREND', 'X_TREND_DIFF','X_INDEX'])
+        frame.drop(columns=['X_TREND', 'X_TREND_DIFF', 'X_INDEX'])
         
         fdict = dict()
         fdict['frame'] = frame
@@ -75,9 +81,13 @@ class Forecast:
         frame[options['predictorColumns']] = frame[options['predictorColumns']].astype(float) 
 
         newTargetColumn = 'X_' + targetColumn
-        frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))
         options['targetColumn'] = newTargetColumn
-               
+        # if we have done outlier detection there will be an interpolated column that has the interpolated actuals
+        if 'X_INTERPOLATED' in frame:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
+        else:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))
+        
         # split the data into past/future based on null in target column 
         nullIdx = frame[targetColumn].isnull()
         futureData = frame[nullIdx]
@@ -158,7 +168,7 @@ class Forecast:
         rowCount = frame.shape[0]
         
         if ('adjustSeasonalityBasedOnTrend' in fdict['options'] and fdict['options']['adjustSeasonalityBasedOnTrend']):
-            #print("Adjusting seasonality based on: ", trendCol)
+            # print("Adjusting seasonality based on: ", trendCol)
             models = []
             # regress each bucket against the corresponding 
             for idx in range(0, len(buckets)):
@@ -176,10 +186,10 @@ class Forecast:
                 else:
                     x = frame[trendCol][idx]
                 
-                #print('idx:',idx,'diffIdx:',diffIdx,'intercept:',model[0],'slope:',model[1],'x:',x,'yhat:',model[0] + model[1] * x)
+                # print('idx:',idx,'diffIdx:',diffIdx,'intercept:',model[0],'slope:',model[1],'x:',x,'yhat:',model[0] + model[1] * x)
                 seasonality.append(model[0] + model[1] * x)
         else:
-            #print("Using raw mean/median diff values for seasonality")
+            # print("Using raw mean/median diff values for seasonality")
             medianVals = []
             for diffs in buckets:
                 medianVals.append(median(diffs))
@@ -224,11 +234,15 @@ class Forecast:
         frame['X_LPI'] = frame['X_FORECAST'] - predictionInterval 
         frame['X_UPI'] = frame['X_FORECAST'] + predictionInterval 
         
+        targetColumn = options['targetColumn']
+        frame['X_APE'] = None 
+        for index, row in frame.iterrows():
+            frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
+        
         if 'forceNonNegative' in fdict['options'] and fdict['options']['forceNonNegative']:
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
         
         return fdict
-    
         
