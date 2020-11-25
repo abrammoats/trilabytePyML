@@ -270,9 +270,8 @@ class Forecast:
          
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
-        model = pm.auto_arima(y, start_p=0, start_q=0, start_P=0, start_Q=0,
-                     max_p=5, max_q=5, max_P=5, max_Q=5, seasonal=True,
-                     stepwise=True, suppress_warnings=True, D=10, max_D=10,
+        model = pm.auto_arima(y, seasonal=True,
+                     stepwise=True, suppress_warnings=True, 
                      error_action='ignore')
 
         preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
