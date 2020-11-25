@@ -21,8 +21,9 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options['targetColumn'] = 'UNIT_DEMAND' 
     options['periodicity'] = 12
     options['seasonality'] = 'Multiplicative' #'Auto'  # 'Auto','None','Additive','Multiplicative' 
+
+    options['method'] = 'ARIMA' #'ARIMA','MLR'
   
-    # options['outlierColumn'] = 'OUTLIER'
     options['autoDetectOutliers'] = True
     options['outlierStdevMultiplier'] = 3.0
    
@@ -32,8 +33,6 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options['adjustSeasonalityTrendColumn'] = 'X_TREND' 
     
     options['forceNonNegative'] = False
-    
-    # print(json.dumps(options, indent=2))
     
     with open(jsonFileName, 'w') as fp:
         json.dump(options, fp)
@@ -85,7 +84,14 @@ def splitFramesAndForecast(frame, options):
                     currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
             
                 model = Forecast()
-                fdict = model.forecast(frame, currentOptions.copy())
+                
+                method = 'MLR' if not('method' in options) else options['method']
+                
+                if (method == 'MLR'):
+                    fdict = model.forecast(frame, currentOptions.copy())
+                else:
+                    fdict = model.forecastARIMA(frame, currentOptions.copy())
+                
                 frame = fdict['frame']
                 frame['X_ERROR'] = None 
                 
@@ -114,17 +120,17 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    fileName = 'c:/temp/retail_unit_demand2.csv'
-    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+#     fileName = 'c:/temp/retail_unit_demand.csv'
+#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-#     if (len(sys.argv) < 3):
-#         print("Error: Insufficient arguments")
-#         sys.exit(-1)
-#           
-#     jsonFileName = sys.argv[1]
-#     fileName = sys.argv[2]
-#     outputFileName = sys.argv[3]
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
+           
+    jsonFileName = sys.argv[1]
+    fileName = sys.argv[2]
+    outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)

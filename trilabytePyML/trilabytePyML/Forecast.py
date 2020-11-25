@@ -17,7 +17,7 @@ from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
 from scipy import stats
 from statistics import mean 
-
+import pmdarima as pm
 
 class Forecast:
     
@@ -245,4 +245,40 @@ class Forecast:
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
         
         return fdict
+
+    def forecastARIMA(self, frame, options):
+        if options['autoDetectOutliers']:
+            fdict = self.preOutlierDetection(frame, options)
+            frame = fdict['frame']
         
+        targetColumn = options['targetColumn']
+        newTargetColumn = 'X_' + targetColumn
+        options['targetColumn'] = newTargetColumn
+        # if we have done outlier detection there will be an interpolated column that has the interpolated actuals
+        if 'X_INTERPOLATED' in frame:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
+        else:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))    
+        
+        # split the data into past/future based on null in target column 
+        nullIdx = frame[targetColumn].isnull()
+        futureData = frame[nullIdx]
+        historicalIdx = list(map(operator.not_, nullIdx))
+        historicalData = frame[historicalIdx] 
+         
+        y = np.asarray(historicalData[newTargetColumn].tolist())
+        
+        model = pm.auto_arima(y, start_p=0, start_q=0, start_P=0, start_Q=0,
+                     max_p=5, max_q=5, max_P=5, max_Q=5, seasonal=True,
+                     stepwise=True, suppress_warnings=True, D=10, max_D=10,
+                     error_action='ignore')
+
+        preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
+
+        output = np.concatenate((y, preds))
+        
+        frame['X_FORECAST'] = output
+    
+        fdict['frame'] = frame
+        return fdict 
+
