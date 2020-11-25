@@ -80,14 +80,13 @@ def splitFramesAndForecast(frame, options):
             try:
                 currentOptions = options.copy()
                 
-                if options['seasonality'] == 'Auto':
-                    currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
-            
                 model = Forecast()
-                
                 method = 'MLR' if not('method' in options) else options['method']
                 
                 if (method == 'MLR'):
+                    if options['seasonality'] == 'Auto':
+                        currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
+                    
                     fdict = model.forecast(frame, currentOptions.copy())
                 else:
                     fdict = model.forecastARIMA(frame, currentOptions.copy())
@@ -98,8 +97,8 @@ def splitFramesAndForecast(frame, options):
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
             
             except Exception as e:
-                tb = traceback.format_exc().replace('\n', ' ')
-                frame['X_ERROR'] = tb
+                msg = traceback.print_stack().replace('\n', ' ')
+                frame['X_ERROR'] = msg
     
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     return outputFrame
