@@ -97,8 +97,9 @@ def splitFramesAndForecast(frame, options):
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
             
             except Exception as e:
-                msg = traceback.print_stack().replace('\n', ' ')
-                frame['X_ERROR'] = msg
+                ed = traceback.format_exc().splitlines()
+                ed = ed[-3] + ' ' + ed[-2] + ' ' + ed[-1]
+                frame['X_ERROR'] = ed
     
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     return outputFrame
@@ -119,17 +120,17 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-#     fileName = 'c:/temp/retail_unit_demand.csv'
-#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    fileName = 'c:/temp/retail_unit_demand2.csv'
+    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-    if (len(sys.argv) < 3):
-        print("Error: Insufficient arguments")
-        sys.exit(-1)
-           
-    jsonFileName = sys.argv[1]
-    fileName = sys.argv[2]
-    outputFileName = sys.argv[3]
+#     if (len(sys.argv) < 3):
+#         print("Error: Insufficient arguments")
+#         sys.exit(-1)
+#            
+#     jsonFileName = sys.argv[1]
+#     fileName = sys.argv[2]
+#     outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)
