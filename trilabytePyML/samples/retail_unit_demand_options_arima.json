@@ -16,11 +16,9 @@
 		"PREDICTOR_3",
 		"PREDICTOR_4"
 	],
-	"method": "MLR",
+	"method": "ARIMA",
 	"targetColumn": "UNIT_DEMAND",
 	"periodicity": 12,
 	"seasonality": "Auto",
-	"autoDetectOutliers": true,
-	"seasonalityBandwidth": 0.6,
-	"ridgeAlpha": 1.0
+	"autoDetectOutliers": true
 }
