@@ -6,18 +6,21 @@
 #    Contact: smutchler@trilabyte.com
 #
 
+import math
 import operator
 import random
-import math
-import numpy as np
+from statistics import mean 
 from statistics import median
-import loess.loess_1d as lo
+
+from scipy import stats
 from sklearn.linear_model import Ridge
+
+import loess.loess_1d as lo
+import numpy as np
+import pmdarima as pm
 from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
-from scipy import stats
-from statistics import mean 
-import pmdarima as pm
+
 
 class Forecast:
     
@@ -271,15 +274,35 @@ class Forecast:
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
         model = pm.auto_arima(y, seasonal=True,
-                     stepwise=True, suppress_warnings=True, 
+                     stepwise=True, suppress_warnings=True,
                      error_action='ignore')
 
+        histPreds, histConf_int = model.predict_in_sample(return_conf_int=True)
         preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
 
-        output = np.concatenate((y, preds))
+        forecast = np.concatenate((histPreds, preds))
+        lpi = np.concatenate((list(map(lambda x: x[0], histConf_int)), list(map(lambda x: x[0], conf_int))))
+        upi = np.concatenate((list(map(lambda x: x[1], histConf_int)), list(map(lambda x: x[1], conf_int))))
         
-        frame['X_FORECAST'] = output
-    
+        frame['X_LPI'] = lpi
+        frame['X_FORECAST'] = forecast 
+        frame['X_UPI'] = upi 
+        
+        mape = calcMAPE(frame['X_FORECAST'], frame[targetColumn])
+        frame['X_MAPE'] = mape
+        fdict['MAPE'] = mape
+        
+        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[targetColumn] 
+
+        frame['X_APE'] = None 
+        for index, row in frame.iterrows():
+            frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
+        
+        if 'forceNonNegative' in fdict['options'] and options['forceNonNegative']:
+            frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
+            frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
+            frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
+        
         fdict['frame'] = frame
         return fdict 
 
