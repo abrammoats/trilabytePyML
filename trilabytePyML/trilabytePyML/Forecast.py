@@ -248,15 +248,18 @@ class Forecast:
         futureData = frame[nullIdx]
         historicalIdx = list(map(operator.not_, nullIdx))
         historicalData = frame[historicalIdx] 
-         
+        
+        x = historicalData[options['predictorColumns']]
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
-        model = pm.auto_arima(y, seasonal=True,
-                     stepwise=True, suppress_warnings=True,
+        model = pm.auto_arima(y, exogenous=x, seasonal=True,
+                     stepwise=False, suppress_warnings=True,
                      error_action='ignore')
 
-        histPreds, histConf_int = model.predict_in_sample(return_conf_int=True)
-        preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
+        histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
+        
+        x = futureData[options['predictorColumns']]
+        preds, conf_int = model.predict(exogenous=x, n_periods=len(futureData), return_conf_int=True)
 
         forecast = np.concatenate((histPreds, preds))
         lpi = np.concatenate((list(map(lambda x: x[0], histConf_int)), list(map(lambda x: x[0], conf_int))))
