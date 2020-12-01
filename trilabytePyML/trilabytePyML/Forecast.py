@@ -275,7 +275,6 @@ class Forecast:
         
         mape = calcMAPE(frame['X_FORECAST'], frame[targetColumn])
         frame['X_MAPE'] = mape
-        fdict['MAPE'] = mape
         
         frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[targetColumn] 
 
@@ -283,11 +282,12 @@ class Forecast:
         for index, row in frame.iterrows():
             frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
         
-        if 'forceNonNegative' in fdict['options'] and options['forceNonNegative']:
+        if 'forceNonNegative' in options and options['forceNonNegative']:
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
         
+        fdict = dict()
         fdict['frame'] = frame
         return fdict 
 
