@@ -120,14 +120,14 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    fileName = 'c:/temp/retail_unit_demand2.csv'
+    fileName = 'c:/temp/retail_unit_demand.csv'
     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
 #     if (len(sys.argv) < 3):
 #         print("Error: Insufficient arguments")
 #         sys.exit(-1)
-#            
+#             
 #     jsonFileName = sys.argv[1]
 #     fileName = sys.argv[2]
 #     outputFileName = sys.argv[3]

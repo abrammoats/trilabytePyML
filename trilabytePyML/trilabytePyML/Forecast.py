@@ -6,18 +6,21 @@
 #    Contact: smutchler@trilabyte.com
 #
 
+import math
 import operator
 import random
-import math
-import numpy as np
+from statistics import mean 
 from statistics import median
-import loess.loess_1d as lo
+
+from scipy import stats
 from sklearn.linear_model import Ridge
+
+import loess.loess_1d as lo
+import numpy as np
+import pmdarima as pm
 from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
-from scipy import stats
-from statistics import mean 
-import pmdarima as pm
+
 
 class Forecast:
     
@@ -169,36 +172,14 @@ class Forecast:
         seasonality = []
         rowCount = frame.shape[0]
         
-        if ('adjustSeasonalityBasedOnTrend' in fdict['options'] and fdict['options']['adjustSeasonalityBasedOnTrend']):
-            # print("Adjusting seasonality based on: ", trendCol)
-            models = []
-            # regress each bucket against the corresponding 
-            for idx in range(0, len(buckets)):
-                y = buckets[idx]
-                x = tbuckets[idx]
-                slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-                models.append([intercept, slope, r_value, idx])  
-           
-            for idx in range(rowCount):
-                diffIdx = math.floor(idx % periodicity)
-                model = models[diffIdx]
-
-                if trendCol == 'X_TREND' and math.isnan(frame['X_TREND'][idx]):
-                    x = frame['X_TREND_PREDICTED'][idx]
-                else:
-                    x = frame[trendCol][idx]
-                
-                # print('idx:',idx,'diffIdx:',diffIdx,'intercept:',model[0],'slope:',model[1],'x:',x,'yhat:',model[0] + model[1] * x)
-                seasonality.append(model[0] + model[1] * x)
-        else:
-            # print("Using raw mean/median diff values for seasonality")
-            medianVals = []
-            for diffs in buckets:
-                medianVals.append(median(diffs))
-            
-            for idx in range(rowCount):
-                diffIdx = math.floor(idx % periodicity)
-                seasonality.append(medianVals[diffIdx])
+        # print("Using raw mean/median diff values for seasonality")
+        medianVals = []
+        for diffs in buckets:
+            medianVals.append(median(diffs))
+        
+        for idx in range(rowCount):
+            diffIdx = math.floor(idx % periodicity)
+            seasonality.append(medianVals[diffIdx])
 
         frame['X_SEASONALITY'] = seasonality
         fdict['frame'] = frame
@@ -267,19 +248,42 @@ class Forecast:
         futureData = frame[nullIdx]
         historicalIdx = list(map(operator.not_, nullIdx))
         historicalData = frame[historicalIdx] 
-         
+        
+        x = historicalData[options['predictorColumns']]
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
-        model = pm.auto_arima(y, seasonal=True,
-                     stepwise=True, suppress_warnings=True, 
+        model = pm.auto_arima(y, exogenous=x, seasonal=True,
+                     stepwise=False, suppress_warnings=True,
                      error_action='ignore')
 
-        preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
-
-        output = np.concatenate((y, preds))
+        histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
         
-        frame['X_FORECAST'] = output
-    
+        x = futureData[options['predictorColumns']]
+        preds, conf_int = model.predict(exogenous=x, n_periods=len(futureData), return_conf_int=True)
+
+        forecast = np.concatenate((histPreds, preds))
+        lpi = np.concatenate((list(map(lambda x: x[0], histConf_int)), list(map(lambda x: x[0], conf_int))))
+        upi = np.concatenate((list(map(lambda x: x[1], histConf_int)), list(map(lambda x: x[1], conf_int))))
+        
+        frame['X_LPI'] = lpi
+        frame['X_FORECAST'] = forecast 
+        frame['X_UPI'] = upi 
+        
+        mape = calcMAPE(frame['X_FORECAST'], frame[targetColumn])
+        frame['X_MAPE'] = mape
+        fdict['MAPE'] = mape
+        
+        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[targetColumn] 
+
+        frame['X_APE'] = None 
+        for index, row in frame.iterrows():
+            frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
+        
+        if 'forceNonNegative' in fdict['options'] and options['forceNonNegative']:
+            frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
+            frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
+            frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
+        
         fdict['frame'] = frame
         return fdict 
 
