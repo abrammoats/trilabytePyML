@@ -231,19 +231,19 @@ class Forecast:
 
     def forecastARIMA(self, frame, options):
         targetColumn = options['targetColumn']
-        newTargetColumn = targetColumn
+        newTargetColumn = 'X_' + targetColumn
         
         if options['autoDetectOutliers']:
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
-            newTargetColumn = 'X_' + targetColumn
         
-        options['targetColumn'] = newTargetColumn
         # if we have done outlier detection there will be an interpolated column that has the interpolated actuals
         if 'X_INTERPOLATED' in frame:
             frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
         else:
             frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))    
+        
+        options['targetColumn'] = newTargetColumn
         
         # split the data into past/future based on null in target column 
         nullIdx = frame[targetColumn].isnull()
