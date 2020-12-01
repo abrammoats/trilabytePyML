@@ -230,12 +230,14 @@ class Forecast:
         return fdict
 
     def forecastARIMA(self, frame, options):
+        targetColumn = options['targetColumn']
+        newTargetColumn = targetColumn
+        
         if options['autoDetectOutliers']:
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
+            newTargetColumn = 'X_' + targetColumn
         
-        targetColumn = options['targetColumn']
-        newTargetColumn = 'X_' + targetColumn
         options['targetColumn'] = newTargetColumn
         # if we have done outlier detection there will be an interpolated column that has the interpolated actuals
         if 'X_INTERPOLATED' in frame:
