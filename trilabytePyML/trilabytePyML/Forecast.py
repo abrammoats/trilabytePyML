@@ -245,6 +245,8 @@ class Forecast:
         
         options['targetColumn'] = newTargetColumn
         
+        frame['X_INDEX'] = frame.index.values
+        
         # split the data into past/future based on null in target column 
         nullIdx = frame[targetColumn].isnull()
         futureData = frame[nullIdx]
