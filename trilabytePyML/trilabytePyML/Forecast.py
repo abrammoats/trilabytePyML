@@ -271,11 +271,27 @@ class Forecast:
         
         forecast = model.predict(future)
         
-        frame['X_FORECAST'] = forecast['yhat']
         frame['X_LPI'] = forecast['yhat_lower']
+        frame['X_FORECAST'] = forecast['yhat']
         frame['X_UPI'] = forecast['yhat_upper']
+        
+        mape = calcMAPE(frame['X_FORECAST'], frame[options['targetColumn']])
+        frame['X_MAPE'] = mape
+        
+        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[options['targetColumn']] 
+        
+        targetColumn = options['targetColumn']
+        frame['X_APE'] = None 
+        for index, row in frame.iterrows():
+            frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
+        
+        if 'forceNonNegative' in fdict['options'] and fdict['options']['forceNonNegative']:
+            frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
+            frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
+            frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
                 
         fdict = dict()
+        fdict['MAPE'] = mape
         fdict['frame'] = frame
         
         return fdict
