@@ -256,7 +256,7 @@ class Forecast:
         pframe['ds'] = historicalData[options['timestampColumn']]
         pframe['y'] = historicalData[options['targetColumn']]
         
-        model = Prophet()
+        model = Prophet(seasonality_mode = 'multiplicative')
         
         for pred in options['predictorColumns']:
             model.add_regressor(pred)
