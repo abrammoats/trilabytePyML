@@ -22,7 +22,9 @@ def buildSampleoptionsJSONFile(jsonFileName):
     options['periodicity'] = 12
     options['seasonality'] = 'Multiplicative' #'Auto'  # 'Auto','None','Additive','Multiplicative' 
 
-    options['method'] = 'ARIMA' #'ARIMA','MLR'
+    options['method'] = 'ARIMA' #'ARIMA','MLR','Prophet'
+  
+    options['timestampColumn'] = "CAL_DATE" #only for FBProphet forecast
   
     options['autoDetectOutliers'] = True
     options['outlierStdevMultiplier'] = 3.0
@@ -77,30 +79,34 @@ def splitFramesAndForecast(frame, options):
             frame = frame[1]
             frame.reset_index(drop=True, inplace=True)
             
+            method = 'MLR' if not('method' in options) else options['method']
+            
             try:
                 currentOptions = options.copy()
                 
                 model = Forecast()
-                method = 'MLR' if not('method' in options) else options['method']
                 
                 if (method == 'MLR'):
                     if options['seasonality'] == 'Auto':
                         currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
                     
                     fdict = model.forecast(frame, currentOptions.copy())
+                elif method.lower() == 'Prophet'.lower():
+                    fdict = model.forecastProphet(frame, options.copy())
                 else:
                     fdict = model.forecastARIMA(frame, currentOptions.copy())
                 
                 frame = fdict['frame']
                 frame['X_ERROR'] = None 
+                frame['X_METHOD'] = method
                 
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
             
             except Exception as e:
-                ed = traceback.format_exc().splitlines()
-                ed = ed[-3] + ' ' + ed[-2] + ' ' + ed[-1]
+                ed = str(traceback.format_exc()).replace('\n', ' ')
                 frame['X_ERROR'] = ed
-    
+                frame['X_METHOD'] = method
+                
                 outputFrame = frame if outputFrame is None else outputFrame.append(frame)
     return outputFrame
 
@@ -112,25 +118,30 @@ if __name__ == '__main__':
     
     print("AutoForecast")
     print("-------------------------------")
+    print("*** You must use Anaconda for Facebook Prophet")
+    print("")
     print("Required Librarires:")
-    print("pip install pandas loess scipy numpy scikit-learn")
+    print("pip install pandas loess scipy numpy scikit-learn pmdarima")
+    print("conda install -c anaconda ephem")
+    print("conda install -c conda-forge pystan")
+    print("conda install -c conda-forge fbprophet")
     print("-------------------------------")
     print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
     print("-------------------------------")
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    fileName = 'c:/temp/retail_unit_demand.csv'
-    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+#     fileName = 'c:/temp/retail_unit_demand3.csv'
+#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-#     if (len(sys.argv) < 3):
-#         print("Error: Insufficient arguments")
-#         sys.exit(-1)
-#             
-#     jsonFileName = sys.argv[1]
-#     fileName = sys.argv[2]
-#     outputFileName = sys.argv[3]
+    if (len(sys.argv) < 3):
+        print("Error: Insufficient arguments")
+        sys.exit(-1)
+             
+    jsonFileName = sys.argv[1]
+    fileName = sys.argv[2]
+    outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)

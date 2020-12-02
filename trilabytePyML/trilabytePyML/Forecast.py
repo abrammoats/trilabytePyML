@@ -11,16 +11,15 @@ import operator
 import random
 from statistics import mean 
 from statistics import median
-
 from scipy import stats
 from sklearn.linear_model import Ridge
-
 import loess.loess_1d as lo
 import numpy as np
 import pmdarima as pm
 from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
-
+from fbprophet import Prophet
+import pandas as pd
 
 class Forecast:
     
@@ -226,6 +225,58 @@ class Forecast:
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
+        
+        return fdict
+
+    def forecastProphet(self, frame, options):
+        targetColumn = options['targetColumn']
+        newTargetColumn = 'X_' + targetColumn
+        
+        if options['autoDetectOutliers']:
+            fdict = self.preOutlierDetection(frame, options)
+            frame = fdict['frame']
+        
+        # if we have done outlier detection there will be an interpolated column that has the interpolated actuals
+        if 'X_INTERPOLATED' in frame:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
+        else:
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))    
+        
+        options['targetColumn'] = newTargetColumn
+        
+        frame['X_INDEX'] = frame.index.values
+        
+        # split the data into past/future based on null in target column 
+        nullIdx = frame[targetColumn].isnull()
+        futureData = frame[nullIdx]
+        historicalIdx = list(map(operator.not_, nullIdx))
+        historicalData = frame[historicalIdx] 
+                
+        pframe = pd.DataFrame()
+        pframe['ds'] = historicalData[options['timestampColumn']]
+        pframe['y'] = historicalData[options['targetColumn']]
+        
+        model = Prophet()
+        
+        for pred in options['predictorColumns']:
+            model.add_regressor(pred)
+            pframe[pred] = historicalData[pred]
+        
+        model.fit(pframe)
+
+        future = model.make_future_dataframe(periods=len(futureData)) 
+        
+        for pred in options['predictorColumns']:
+            future[pred] = frame[pred]
+        
+        forecast = model.predict(future)
+        
+        frame['X_FORECAST'] = forecast['yhat']
+        frame['X_LPI'] = forecast['yhat_lower']
+        frame['X_UPI'] = forecast['yhat_upper']
+                
+        fdict = dict()
+        fdict['frame'] = frame
         
         return fdict
 
