@@ -11,33 +11,8 @@ import json
 import sys
 import pandas as pd 
 from trilabytePyML.Forecast import Forecast
+import trilabytePyML.util.Parameters as params
 import traceback 
-
-def buildSampleoptionsJSONFile(jsonFileName):
-    options = dict()
-    options['sortColumns'] = ['SKU', 'STORE_NUMBER', 'CAL_YEAR', 'CAL_MONTH']
-    options['splitColumns'] = ['SKU', 'STORE_NUMBER']
-    options['predictorColumns'] = ['X_INDEX', 'PREDICTOR_1', 'PREDICTOR_2', 'PREDICTOR_3', 'PREDICTOR_4']
-    options['targetColumn'] = 'UNIT_DEMAND' 
-    options['periodicity'] = 12
-    options['seasonality'] = 'Multiplicative' #'Auto'  # 'Auto','None','Additive','Multiplicative' 
-
-    options['method'] = 'ARIMA' #'ARIMA','MLR','Prophet'
-  
-    options['timestampColumn'] = "CAL_DATE" #only for FBProphet forecast
-  
-    options['autoDetectOutliers'] = True
-    options['outlierStdevMultiplier'] = 3.0
-   
-    options['seasonalityBandwidth'] = 0.6
-    options['ridgeAlpha'] = 1.0
-    options['adjustSeasonalityBasedOnTrend'] = True 
-    options['adjustSeasonalityTrendColumn'] = 'X_TREND' 
-    
-    options['forceNonNegative'] = False
-    
-    with open(jsonFileName, 'w') as fp:
-        json.dump(options, fp)
 
 def findMAPE(frame, options, seasonality):
     options = options.copy()
@@ -46,10 +21,8 @@ def findMAPE(frame, options, seasonality):
     return  model.forecast(frame.copy(), options)['MAPE']
 
 def findOptimalSeasonality(frame, options):
-    nonNullRowCount = frame[options['targetColumn']].count()
-    periodicity = options['periodicity']
-    
-#     print("periodicity:", periodicity, "nonNullRowCount:", nonNullRowCount)
+    nonNullRowCount = frame[params.getParam('targetColumn', options)].count()
+    periodicity = params.getParam('periodicity', options)
     
     if nonNullRowCount < periodicity:
         return "None"
@@ -69,9 +42,9 @@ def findOptimalSeasonality(frame, options):
         return "Multiplicative"
 
 def splitFramesAndForecast(frame, options):
-    frame.sort_values(by=options['sortColumns'], ascending=True, inplace=True)
+    frame.sort_values(by=params.getParam('sortColumns', options), ascending=True, inplace=True)
     
-    frames = list(frame.groupby(by=options['splitColumns']))
+    frames = list(frame.groupby(by=params.getParam('splitColumns', options)))
     
     outputFrame = None
 
@@ -79,7 +52,7 @@ def splitFramesAndForecast(frame, options):
             frame = frame[1]
             frame.reset_index(drop=True, inplace=True)
             
-            method = 'MLR' if not('method' in options) else options['method']
+            method = params.getParam('method', options)
             
             try:
                 currentOptions = options.copy()
@@ -87,7 +60,7 @@ def splitFramesAndForecast(frame, options):
                 model = Forecast()
                 
                 if (method == 'MLR'):
-                    if options['seasonality'] == 'Auto':
+                    if params.getParam('seasonality', options) == 'Auto':
                         currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
                     
                     fdict = model.forecast(frame, currentOptions.copy())

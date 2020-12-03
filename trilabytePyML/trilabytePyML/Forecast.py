@@ -18,6 +18,7 @@ import numpy as np
 import pmdarima as pm
 from trilabytePyML.stats.Statistics import calcMAPE
 from trilabytePyML.stats.Statistics import calcPredictionInterval
+import trilabytePyML.util.Parameters as params 
 from fbprophet import Prophet
 import pandas as pd
 
@@ -36,8 +37,8 @@ class Forecast:
         historicalData = frame[historicalIdx] 
          
         x = np.asarray(historicalData['X_INDEX'].tolist())    
-        y = np.asarray(historicalData[options['targetColumn']].tolist())
-        bandwidth = options['seasonalityBandwidth']
+        y = np.asarray(historicalData[params.getParam('targetColumn', options)].tolist())
+        bandwidth = params.getParam('seasonalityBandwidth', options)
         xout, yout, weights = lo.loess_1d(x, y, frac=bandwidth, degree=2)
         
         frame['X_TREND'] = np.append(yout, np.asarray(futureData[targetColumn].tolist())) 
@@ -46,11 +47,7 @@ class Forecast:
         stdev = frame['X_TREND_DIFF'].std()
         avg = frame['X_TREND_DIFF'].mean()
         
-#         print('stdev:',stdev, 'mean:',avg)
-        
-        mult = 3.0 
-        if 'outlierStdevMultiplier' in options:
-            mult = options['outlierStdevMultiplier'] 
+        mult = params.getParam('outlierStdevMultiplier', options)
         
         frame['X_OUTLIER'] = 0
         for index, row in frame.iterrows():
@@ -74,13 +71,13 @@ class Forecast:
     def prepare(self, frame, options):
         # create copy of target for modification (fill zeros with very small number)
         random.seed(158923)
-        targetColumn = options['targetColumn']
+        targetColumn = params.getParam('targetColumn', options)
         
         frame['X_INDEX'] = frame.index.values
         
         # ensure predictors and target are float
         frame[targetColumn] = frame[targetColumn].astype(float)
-        frame[options['predictorColumns']] = frame[options['predictorColumns']].astype(float) 
+        frame[params.getParam('predictorColumns', options)] = frame[params.getParam('predictorColumns', options)].astype(float) 
 
         newTargetColumn = 'X_' + targetColumn
         
@@ -88,7 +85,7 @@ class Forecast:
         if 'X_INTERPOLATED' in frame:
             frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
         else:
-            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[params.getParam('targetColumn', options)]))
         
         options['targetColumn'] = newTargetColumn
         
@@ -100,7 +97,7 @@ class Forecast:
          
         x = np.asarray(historicalData['X_INDEX'].tolist())    
         y = np.asarray(historicalData[newTargetColumn].tolist())
-        bandwidth = options['seasonalityBandwidth']
+        bandwidth = params.getParam('seasonalityBandwidth', options)
         xout, yout, weights = lo.loess_1d(x, y, frac=bandwidth, degree=2)
         
         frame['X_TREND'] = np.append(yout, np.asarray(futureData[targetColumn].tolist())) 
@@ -118,17 +115,15 @@ class Forecast:
     def predictTrend(self, fdict):
         frame = fdict['frame']
         historicalData = frame[fdict['historicalIdx']]
-          
-        if ('outlierColumn' in fdict['options'] and fdict['options']['outlierColumn'] in historicalData):
-            historicalData = historicalData[historicalData[fdict['options']['outlierColumn']] == 0]
-            
-        x = historicalData[fdict['options']['predictorColumns']]
+        options = fdict['options']
+                      
+        x = historicalData[params.getParam('predictorColumns', options)]
         y = historicalData['X_TREND']
                 
-        model = Ridge(alpha=fdict['options']['ridgeAlpha'])
+        model = Ridge(alpha=params.getParam('ridgeAlpha', options))
         model.fit(x, y)
         
-        xscore = frame[fdict['options']['predictorColumns']]
+        xscore = frame[params.getParam('predictorColumns', options)]
         yhat = model.predict(xscore)
         
         frame['X_TREND_PREDICTED'] = yhat
@@ -138,18 +133,18 @@ class Forecast:
     def calcSeasonality(self, fdict):
         frame = fdict['frame']
         historicalData = frame[fdict['historicalIdx']] 
-        periodicity = fdict['options']['periodicity']
+        options = fdict['options']
+        periodicity = params.getParam('periodicity', options)
         
         # short-circuit if none is chosen
-        if fdict['options']['seasonality'] == 'None':
+        if params.getParam('seasonality', options) == 'None':
             frame['X_SEASONALITY'] = None
             fdict['frame'] = frame
             return fdict;
         
-        diffData = historicalData['X_TREND_DIFF' if fdict['options']['seasonality'] == 'Additive' else 'X_TREND_RATIO']
+        diffData = historicalData['X_TREND_DIFF' if params.getParam('seasonality', options) == 'Additive' else 'X_TREND_RATIO']
         
-        trendCol = 'X_TREND' if not('adjustSeasonalityTrendColumn' in fdict['options']) else fdict['options']['adjustSeasonalityTrendColumn']
-        trendData = historicalData[trendCol]
+        trendData = historicalData['X_TREND']
                         
         buckets = []  # holds trend (diff/ratio) data indexed by periodicity
         tbuckets = []  # holds corresponding trend data
@@ -157,21 +152,17 @@ class Forecast:
             diffVal = diffData.iloc[idx]
             trendVal = trendData.iloc[idx]
 
-            outlier = ('outlierColumn' in fdict['options'] and fdict['options']['outlierColumn'] in historicalData and historicalData[fdict['options']['outlierColumn']].iloc[idx] == 1)
-                
             bucketIdx = math.floor(idx % periodicity)
-            if (not(outlier)):
-                if (len(buckets) < (bucketIdx + 1)):
-                    tbuckets.append([trendVal])
-                    buckets.append([diffVal])
-                else:
-                    tbuckets[bucketIdx].append(trendVal)
-                    buckets[bucketIdx].append(diffVal)
+            if (len(buckets) < (bucketIdx + 1)):
+                tbuckets.append([trendVal])
+                buckets.append([diffVal])
+            else:
+                tbuckets[bucketIdx].append(trendVal)
+                buckets[bucketIdx].append(diffVal)
         
         seasonality = []
         rowCount = frame.shape[0]
         
-        # print("Using raw mean/median diff values for seasonality")
         medianVals = []
         for diffs in buckets:
             medianVals.append(median(diffs))
@@ -186,7 +177,7 @@ class Forecast:
         return fdict
        
     def forecast(self, frame, options):
-        if options['autoDetectOutliers']:
+        if params.getParam('autoDetectOutliers', options):
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
         
@@ -196,32 +187,33 @@ class Forecast:
                 
         fdict = self.calcSeasonality(fdict)
         
-        frame['X_SEASONALITY_TYPE'] = fdict['options']['seasonality']
+        options = fdict['options']
+        frame['X_SEASONALITY_TYPE'] = params.getParam('seasonality', options)
         
-        if (fdict['options']['seasonality'] == 'Additive'):
+        if (params.getParam('seasonality', options) == 'Additive'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] + frame['X_TREND_PREDICTED']
-        elif (fdict['options']['seasonality'] == 'Multiplicative'):
+        elif (params.getParam('seasonality', options) == 'Multiplicative'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] * frame['X_TREND_PREDICTED']
         else:
             frame['X_FORECAST'] = frame['X_TREND_PREDICTED']
         
-        mape = calcMAPE(frame['X_FORECAST'], frame[fdict['options']['targetColumn']])
+        mape = calcMAPE(frame['X_FORECAST'], frame[params.getParam('targetColumn', options)])
         frame['X_MAPE'] = mape
         fdict['MAPE'] = mape
         
-        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[options['targetColumn']] 
+        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[params.getParam('targetColumn', options)] 
         
         predictionInterval = calcPredictionInterval(frame['X_RESIDUAL'])
 
         frame['X_LPI'] = frame['X_FORECAST'] - predictionInterval 
         frame['X_UPI'] = frame['X_FORECAST'] + predictionInterval 
         
-        targetColumn = options['targetColumn']
+        targetColumn = params.getParam('targetColumn', options)
         frame['X_APE'] = None 
         for index, row in frame.iterrows():
             frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
         
-        if 'forceNonNegative' in fdict['options'] and fdict['options']['forceNonNegative']:
+        if params.getParam('forceNonNegative', options):
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
@@ -229,10 +221,10 @@ class Forecast:
         return fdict
 
     def forecastProphet(self, frame, options):
-        targetColumn = options['targetColumn']
+        targetColumn = params.getParam('targetColumn', options)
         newTargetColumn = 'X_' + targetColumn
         
-        if options['autoDetectOutliers']:
+        if params.getParam('autoDetectOutliers', options):
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
         
@@ -240,7 +232,7 @@ class Forecast:
         if 'X_INTERPOLATED' in frame:
             frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
         else:
-            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))    
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[params.getParam('targetColumn', options)]))    
         
         options['targetColumn'] = newTargetColumn
         
@@ -253,23 +245,23 @@ class Forecast:
         historicalData = frame[historicalIdx] 
                 
         pframe = pd.DataFrame()
-        pframe['ds'] = historicalData[options['timestampColumn']]
-        pframe['y'] = historicalData[options['targetColumn']]
+        pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
+        pframe['y'] = historicalData[params.getParam('targetColumn', options)]
         
         model = Prophet(seasonality_mode = 'multiplicative')
         
-        for pred in options['predictorColumns']:
+        for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
             pframe[pred] = historicalData[pred]
         
         model.fit(pframe)
 
-        if options['periodicity'] == 12:
+        if params.getParam('periodicity', options) == 12:
             future = model.make_future_dataframe(periods=len(futureData), freq='MS')
         else: 
             future = model.make_future_dataframe(periods=len(futureData))
         
-        for pred in options['predictorColumns']:
+        for pred in params.getParam('predictorColumns', options):
             future[pred] = frame[pred]
         
         forecast = model.predict(future)
@@ -278,17 +270,17 @@ class Forecast:
         frame['X_FORECAST'] = forecast['yhat']
         frame['X_UPI'] = forecast['yhat_upper']
         
-        mape = calcMAPE(frame['X_FORECAST'], frame[options['targetColumn']])
+        mape = calcMAPE(frame['X_FORECAST'], frame[params.getParam('targetColumn', options)])
         frame['X_MAPE'] = mape
         
-        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[options['targetColumn']] 
+        frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[params.getParam('targetColumn', options)] 
         
-        targetColumn = options['targetColumn']
+        targetColumn = params.getParam('targetColumn', options)
         frame['X_APE'] = None 
         for index, row in frame.iterrows():
             frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
         
-        if 'forceNonNegative' in fdict['options'] and fdict['options']['forceNonNegative']:
+        if 'forceNonNegative' in fdict['options'] and params.getParam('forceNonNegative', fdict['options']):
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
@@ -300,10 +292,10 @@ class Forecast:
         return fdict
 
     def forecastARIMA(self, frame, options):
-        targetColumn = options['targetColumn']
+        targetColumn = params.getParam('targetColumn', options)
         newTargetColumn = 'X_' + targetColumn
         
-        if options['autoDetectOutliers']:
+        if params.getParam('autoDetectOutliers', options):
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
         
@@ -311,7 +303,7 @@ class Forecast:
         if 'X_INTERPOLATED' in frame:
             frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame['X_INTERPOLATED']))
         else:
-            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[options['targetColumn']]))    
+            frame[newTargetColumn] = list(map(lambda x: (x if x != 0.0 else random.random() / 1E5), frame[params.getParam('targetColumn', options)]))    
         
         options['targetColumn'] = newTargetColumn
         
@@ -323,17 +315,27 @@ class Forecast:
         historicalIdx = list(map(operator.not_, nullIdx))
         historicalData = frame[historicalIdx] 
         
-        x = historicalData[options['predictorColumns']]
+        
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
-        model = pm.auto_arima(y, exogenous=x, seasonal=True,
+        if len(params.getParam('predictorColumns', options)) > 0:
+            x = historicalData[params.getParam('predictorColumns', options)]
+            model = pm.auto_arima(y, exogenous=x, seasonal=True,
                      stepwise=False, suppress_warnings=True,
                      error_action='ignore')
 
-        histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
+            histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
         
-        x = futureData[options['predictorColumns']]
-        preds, conf_int = model.predict(exogenous=x, n_periods=len(futureData), return_conf_int=True)
+            x = futureData[params.getParam('predictorColumns', options)]
+            preds, conf_int = model.predict(exogenous=x, n_periods=len(futureData), return_conf_int=True)
+        else: 
+            model = pm.auto_arima(y, seasonal=True,
+                     stepwise=False, suppress_warnings=True,
+                     error_action='ignore')
+
+            histPreds, histConf_int = model.predict_in_sample(return_conf_int=True)
+
+            preds, conf_int = model.predict(n_periods=len(futureData), return_conf_int=True)
 
         forecast = np.concatenate((histPreds, preds))
         lpi = np.concatenate((list(map(lambda x: x[0], histConf_int)), list(map(lambda x: x[0], conf_int))))
@@ -352,7 +354,7 @@ class Forecast:
         for index, row in frame.iterrows():
             frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
         
-        if 'forceNonNegative' in options and options['forceNonNegative']:
+        if params.getParam('forceNonNegative', options):
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
