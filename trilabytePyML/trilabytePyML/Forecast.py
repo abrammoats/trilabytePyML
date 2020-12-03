@@ -264,7 +264,10 @@ class Forecast:
         
         model.fit(pframe)
 
-        future = model.make_future_dataframe(periods=len(futureData)) 
+        if options['periodicity'] == 12:
+            future = model.make_future_dataframe(periods=len(futureData), freq='MS')
+        else: 
+            future = model.make_future_dataframe(periods=len(futureData))
         
         for pred in options['predictorColumns']:
             future[pred] = frame[pred]
