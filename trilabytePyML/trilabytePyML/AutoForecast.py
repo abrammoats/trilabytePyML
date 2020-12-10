@@ -14,11 +14,13 @@ from trilabytePyML.Forecast import Forecast
 import trilabytePyML.util.Parameters as params
 import traceback 
 
+
 def findMAPE(frame, options, seasonality):
     options = options.copy()
     options['seasonality'] = seasonality
     model = Forecast()
-    return  model.forecast(frame.copy(), options)['MAPE']
+    return  model.forecastMLR(frame.copy(), options)['MAPE']
+
 
 def findOptimalSeasonality(frame, options):
     nonNullRowCount = frame[params.getParam('targetColumn', options)].count()
@@ -41,6 +43,7 @@ def findOptimalSeasonality(frame, options):
     else:
         return "Multiplicative"
 
+
 def splitFramesAndForecast(frame, options):
     frame.sort_values(by=params.getParam('sortColumns', options), ascending=True, inplace=True)
     
@@ -54,35 +57,69 @@ def splitFramesAndForecast(frame, options):
             
             method = params.getParam('method', options)
             
-            try:
-                currentOptions = options.copy()
+            if method == 'Auto':
+                opts = options.copy()
+                opts['method'] = 'ARIMA'
+                arimaFrame = forecastSingleFrame(frame.copy(), opts)
+                arimaMAPE = arimaFrame['X_MAPE'][0]
                 
-                model = Forecast()
+                opts = options.copy()
+                opts['method'] = 'Prophet'
+                prophetFrame = forecastSingleFrame(frame.copy(), opts)
+                prophetMAPE = prophetFrame['X_MAPE'][0]
                 
-                if (method == 'MLR'):
-                    if params.getParam('seasonality', options) == 'Auto':
-                        currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
-                    
-                    fdict = model.forecast(frame, currentOptions.copy())
-                elif method.lower() == 'Prophet'.lower():
-                    fdict = model.forecastProphet(frame, options.copy())
+                opts = options.copy()
+                opts['method'] = 'MLR'
+                mlrFrame = forecastSingleFrame(frame.copy(), opts)
+                mlrMAPE = mlrFrame['X_MAPE'][0]
+                
+                mapes = [mlrMAPE, arimaMAPE, prophetMAPE]
+                minMAPE = min(mapes)
+                
+                print("Auto MAPEs (MLR, ARIMA, Prophet): ", mapes)
+                
+                if (mlrMAPE <= minMAPE):
+                    frame = mlrFrame
+                elif (prophetMAPE <= minMAPE):
+                    frame = prophetFrame
                 else:
-                    fdict = model.forecastARIMA(frame, currentOptions.copy())
+                    frame = arimaFrame                              
                 
-                frame = fdict['frame']
-                frame['X_ERROR'] = None 
-                frame['X_METHOD'] = method
-                
-                outputFrame = frame if outputFrame is None else outputFrame.append(frame)
+            else:
+                frame = forecastSingleFrame(frame, options.copy())
             
-            except Exception as e:
-                ed = str(traceback.format_exc()).replace('\n', ' ')
-                frame['X_ERROR'] = ed
-                frame['X_METHOD'] = method
-                
-                outputFrame = frame if outputFrame is None else outputFrame.append(frame)
+            outputFrame = frame if outputFrame is None else outputFrame.append(frame, ignore_index=True)
+    
     return outputFrame
 
+def forecastSingleFrame(frame, options):
+    try:
+        method = params.getParam('method', options)
+        currentOptions = options.copy()
+        
+        model = Forecast()
+                    
+        if (method == 'MLR'):
+            if params.getParam('seasonality', options) == 'Auto':
+                currentOptions['seasonality'] = findOptimalSeasonality(frame.copy(), options.copy())
+            
+            fdict = model.forecastMLR(frame, currentOptions.copy())
+        elif method.lower() == 'Prophet'.lower():
+            fdict = model.forecastProphet(frame, options.copy())
+        else:
+            fdict = model.forecastARIMA(frame, currentOptions.copy())
+        
+        frame = fdict['frame']
+        frame['X_ERROR'] = None 
+        frame['X_METHOD'] = method
+    
+    except Exception as e:
+        ed = str(traceback.format_exc()).replace('\n', ' ')
+        frame['X_ERROR'] = ed
+        frame['X_METHOD'] = method
+    
+    return frame
+        
 
 ##############################
 # Main
@@ -99,28 +136,30 @@ if __name__ == '__main__':
     print("conda install -c conda-forge pystan")
     print("conda install -c conda-forge fbprophet")
     print("-------------------------------")
-    print("Usage: python -m trilabytePyML.AutoForecast [json forecast options] [csv source data] [output csv file]")
+    print("Usage: python -m trilabytePyML.AutoForecast [json forecastMLR options] [csv source data] [output csv file]")
     print("-------------------------------")
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-#     fileName = 'c:/temp/retail_unit_demand3.csv'
-#     jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-#     outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    fileName = 'c:/temp/retail_unit_demand3.csv'
+    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     
-    if (len(sys.argv) < 3):
-        print("Error: Insufficient arguments")
-        sys.exit(-1)
-               
-    jsonFileName = sys.argv[1]
-    fileName = sys.argv[2]
-    outputFileName = sys.argv[3]
+#     if (len(sys.argv) < 3):
+#         print("Error: Insufficient arguments")
+#         sys.exit(-1)
+#                
+#     jsonFileName = sys.argv[1]
+#     fileName = sys.argv[2]
+#     outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)
     
+    options['method'] = 'Auto'
+    
     print('Options:') 
-    print(json.dumps(options,indent=2), '\n')
+    print(json.dumps(options, indent=2), '\n')
     
     frame = pd.read_csv(fileName)
         

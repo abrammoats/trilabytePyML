@@ -16,18 +16,14 @@
 		"PREDICTOR_3",
 		"PREDICTOR_4"
 	],
-	"method": "MLR",
+	"method": "Auto",
 	"targetColumn": "UNIT_DEMAND",
 	"periodicity": 12,
 	"seasonality": "Auto",
 	"autoDetectOutliers": true,
+	"outlierStdevMultiplier": 3.0,
 	"seasonalityBandwidth": 0.6,
 	"ridgeAlpha": 1.0,
-	"minMAPEImprovmentForOutlier": 3.0,
-	"adjustSeasonalityBasedOnTrend": false, 
-    "adjustSeasonalityTrendColumn": "X_TREND",
-	"outlierColumn": "OUTLIER",
 	"timestampColumn": "CAL_DATE",
-	"forceNonNegative": false,
-	"outlierStdevMultiplier": 3.0
+	"forceNonNegative": false
 }

@@ -176,7 +176,7 @@ class Forecast:
         
         return fdict
        
-    def forecast(self, frame, options):
+    def forecastMLR(self, frame, options):
         if params.getParam('autoDetectOutliers', options):
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
@@ -189,14 +189,14 @@ class Forecast:
         
         options = fdict['options']
         frame['X_SEASONALITY_TYPE'] = params.getParam('seasonality', options)
-        
+                
         if (params.getParam('seasonality', options) == 'Additive'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] + frame['X_TREND_PREDICTED']
         elif (params.getParam('seasonality', options) == 'Multiplicative'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] * frame['X_TREND_PREDICTED']
         else:
             frame['X_FORECAST'] = frame['X_TREND_PREDICTED']
-        
+                
         mape = calcMAPE(frame['X_FORECAST'], frame[params.getParam('targetColumn', options)])
         frame['X_MAPE'] = mape
         fdict['MAPE'] = mape
@@ -284,11 +284,17 @@ class Forecast:
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
+
+        # add columns for consistency with other methods        
+        frame['X_SEASONALITY'] = None 
+        frame['X_SEASONALITY_TYPE'] = None 
+        frame['X_TREND_PREDICTED'] = None 
+        frame['X_TREND_RATIO'] = None  
                 
         fdict = dict()
         fdict['MAPE'] = mape
         fdict['frame'] = frame
-        
+            
         return fdict
 
     def forecastARIMA(self, frame, options):
@@ -358,6 +364,12 @@ class Forecast:
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
+        
+        # add columns for consistency with other methods        
+        frame['X_SEASONALITY'] = None 
+        frame['X_SEASONALITY_TYPE'] = None 
+        frame['X_TREND_PREDICTED'] = None 
+        frame['X_TREND_RATIO'] = None  
         
         fdict = dict()
         fdict['frame'] = frame
