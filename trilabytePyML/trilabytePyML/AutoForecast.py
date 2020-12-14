@@ -13,7 +13,8 @@ import pandas as pd
 from trilabytePyML.Forecast import Forecast
 import trilabytePyML.util.Parameters as params
 import traceback 
-
+from statistics import median
+from trilabytePyML.stats.Statistics import calcMAPE
 
 def findMAPE(frame, options, seasonality):
     options = options.copy()
@@ -73,17 +74,28 @@ def splitFramesAndForecast(frame, options):
                 mlrFrame = forecastSingleFrame(frame.copy(), opts)
                 mlrMAPE = 1E6 if 'X_MAPE' not in arimaFrame else mlrFrame['X_MAPE'][0]
                 
-                mapes = [mlrMAPE, arimaMAPE, prophetMAPE]
-                minMAPE = min(mapes)
+                if 'X_FORECAST' in mlrFrame and 'X_FORECAST' in prophetFrame and 'X_FORECAST' in arimaFrame:
+                    ensembleFrame = mlrFrame.copy() 
+                    ensembleFrame['X_FORECAST'] = list(map(lambda x, y , z: median([x, y, z]), mlrFrame['X_FORECAST'], arimaFrame['X_FORECAST'], prophetFrame['X_FORECAST']))
+                    ensembleMAPE = calcMAPE(ensembleFrame['X_FORECAST'], ensembleFrame[params.getParam('targetColumn', options)])
+                    ensembleFrame['X_MAPE'] = ensembleMAPE
+                    
+                    mapes = [mlrMAPE, arimaMAPE, prophetMAPE, ensembleMAPE]
+                else:
+                    mapes = [mlrMAPE, arimaMAPE, prophetMAPE]
                 
-                print("Auto MAPEs (MLR, ARIMA, Prophet): ", mapes)
+                print("Auto MAPEs (MLR, ARIMA, Prophet, Ensemble): ", mapes)
+                
+                minMAPE = min(mapes)
                 
                 if (mlrMAPE <= minMAPE):
                     frame = mlrFrame
                 elif (prophetMAPE <= minMAPE):
                     frame = prophetFrame
+                elif (arimaMAPE <= minMAPE):
+                    frame = arimaFrame      
                 else:
-                    frame = arimaFrame                              
+                    frame = ensembleFrame                         
                 
             else:
                 frame = forecastSingleFrame(frame, options.copy())
@@ -141,7 +153,7 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    DEBUG = False
+    DEBUG = True
   
     if DEBUG:
         fileName = 'c:/temp/retail_unit_demand3.csv'
