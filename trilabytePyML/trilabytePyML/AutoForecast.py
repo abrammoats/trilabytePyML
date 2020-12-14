@@ -61,17 +61,17 @@ def splitFramesAndForecast(frame, options):
                 opts = options.copy()
                 opts['method'] = 'ARIMA'
                 arimaFrame = forecastSingleFrame(frame.copy(), opts)
-                arimaMAPE = arimaFrame['X_MAPE'][0]
+                arimaMAPE = 1E6 if 'X_MAPE' not in arimaFrame else arimaFrame['X_MAPE'][0]
                 
                 opts = options.copy()
                 opts['method'] = 'Prophet'
                 prophetFrame = forecastSingleFrame(frame.copy(), opts)
-                prophetMAPE = prophetFrame['X_MAPE'][0]
+                prophetMAPE = 1E6 if 'X_MAPE' not in arimaFrame else prophetFrame['X_MAPE'][0]
                 
                 opts = options.copy()
                 opts['method'] = 'MLR'
                 mlrFrame = forecastSingleFrame(frame.copy(), opts)
-                mlrMAPE = mlrFrame['X_MAPE'][0]
+                mlrMAPE = 1E6 if 'X_MAPE' not in arimaFrame else mlrFrame['X_MAPE'][0]
                 
                 mapes = [mlrMAPE, arimaMAPE, prophetMAPE]
                 minMAPE = min(mapes)
@@ -141,17 +141,20 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    fileName = 'c:/temp/retail_unit_demand3.csv'
-    jsonFileName = 'c:/temp/retail_unit_demand_options.json'
-    outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
-    
-#     if (len(sys.argv) < 3):
-#         print("Error: Insufficient arguments")
-#         sys.exit(-1)
-#                
-#     jsonFileName = sys.argv[1]
-#     fileName = sys.argv[2]
-#     outputFileName = sys.argv[3]
+    DEBUG = False
+  
+    if DEBUG:
+        fileName = 'c:/temp/retail_unit_demand3.csv'
+        jsonFileName = 'c:/temp/retail_unit_demand_options.json'
+        outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
+    else:
+        if (len(sys.argv) < 3):
+            print("Error: Insufficient arguments")
+            sys.exit(-1)
+                    
+        jsonFileName = sys.argv[1]
+        fileName = sys.argv[2]
+        outputFileName = sys.argv[3]
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)

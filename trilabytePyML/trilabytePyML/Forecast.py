@@ -321,13 +321,12 @@ class Forecast:
         historicalIdx = list(map(operator.not_, nullIdx))
         historicalData = frame[historicalIdx] 
         
-        
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
         if len(params.getParam('predictorColumns', options)) > 0:
             x = historicalData[params.getParam('predictorColumns', options)]
             model = pm.auto_arima(y, exogenous=x, seasonal=True,
-                     stepwise=False, suppress_warnings=True,
+                     stepwise=True, suppress_warnings=True,
                      error_action='ignore')
 
             histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
