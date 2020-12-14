@@ -153,7 +153,7 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    DEBUG = True
+    DEBUG = False
   
     if DEBUG:
         fileName = 'c:/temp/retail_unit_demand3.csv'
