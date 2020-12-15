@@ -21,6 +21,7 @@ from trilabytePyML.stats.Statistics import calcPredictionInterval
 import trilabytePyML.util.Parameters as params 
 from fbprophet import Prophet
 import pandas as pd
+from sklearn.model_selection import ParameterGrid
 
 class Forecast:
     
@@ -220,6 +221,27 @@ class Forecast:
         
         return fdict
 
+    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData):
+        model = Prophet(seasonality_mode = 'multiplicative')
+        
+        for pred in params.getParam('predictorColumns', options):
+            model.add_regressor(pred)
+            pframe[pred] = historicalData[pred]
+        
+        model.fit(pframe)
+
+        if params.getParam('periodicity', options) == 12:
+            future = model.make_future_dataframe(periods=len(futureData), freq='MS')
+        else: 
+            future = model.make_future_dataframe(periods=len(futureData))
+        
+        for pred in params.getParam('predictorColumns', options):
+            future[pred] = frame[pred]
+        
+        forecast = model.predict(future)
+        
+        return forecast 
+
     def forecastProphet(self, frame, options):
         targetColumn = params.getParam('targetColumn', options)
         newTargetColumn = 'X_' + targetColumn
@@ -248,23 +270,11 @@ class Forecast:
         pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
         pframe['y'] = historicalData[params.getParam('targetColumn', options)]
         
-        model = Prophet(seasonality_mode = 'multiplicative')
-        
-        for pred in params.getParam('predictorColumns', options):
-            model.add_regressor(pred)
-            pframe[pred] = historicalData[pred]
-        
-        model.fit(pframe)
-
-        if params.getParam('periodicity', options) == 12:
-            future = model.make_future_dataframe(periods=len(futureData), freq='MS')
-        else: 
-            future = model.make_future_dataframe(periods=len(futureData))
-        
-        for pred in params.getParam('predictorColumns', options):
-            future[pred] = frame[pred]
-        
-        forecast = model.predict(future)
+        if 'hypertune' not in options or not(options['hypertune']):
+            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData)
+        else:
+            # find best model through hyper-tuning
+            forecast = None 
         
         frame['X_LPI'] = forecast['yhat_lower']
         frame['X_FORECAST'] = forecast['yhat']
