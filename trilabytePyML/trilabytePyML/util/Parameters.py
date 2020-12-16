@@ -17,6 +17,7 @@ def getParam(param, options):
         defaults['seasonalityBandwidth'] = 0.6
         defaults['ridgeAlpha'] = 1.0
         defaults['forceNonNegative'] = False
+        defaults['hypertune'] = False 
         
         val = None if not(param in defaults) else defaults[param]
         

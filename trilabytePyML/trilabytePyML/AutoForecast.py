@@ -67,12 +67,12 @@ def splitFramesAndForecast(frame, options):
                 opts = options.copy()
                 opts['method'] = 'Prophet'
                 prophetFrame = forecastSingleFrame(frame.copy(), opts)
-                prophetMAPE = 1E6 if 'X_MAPE' not in arimaFrame else prophetFrame['X_MAPE'][0]
+                prophetMAPE = 1E6 if 'X_MAPE' not in prophetFrame else prophetFrame['X_MAPE'][0]
                 
                 opts = options.copy()
                 opts['method'] = 'MLR'
                 mlrFrame = forecastSingleFrame(frame.copy(), opts)
-                mlrMAPE = 1E6 if 'X_MAPE' not in arimaFrame else mlrFrame['X_MAPE'][0]
+                mlrMAPE = 1E6 if 'X_MAPE' not in mlrFrame else mlrFrame['X_MAPE'][0]
                 
                 if 'X_FORECAST' in mlrFrame and 'X_FORECAST' in prophetFrame and 'X_FORECAST' in arimaFrame:
                     ensembleFrame = mlrFrame.copy() 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
   
     pd.options.mode.chained_assignment = None  # default='warn'
   
-    DEBUG = True
+    DEBUG = False
   
     if DEBUG:
         fileName = 'c:/temp/retail_unit_demand3.csv'
@@ -170,8 +170,6 @@ if __name__ == '__main__':
     
     with open(jsonFileName, 'r') as fp:
         options = json.load(fp)
-    
-    options['method'] = 'Auto'
     
     print('Options:') 
     print(json.dumps(options, indent=2), '\n')

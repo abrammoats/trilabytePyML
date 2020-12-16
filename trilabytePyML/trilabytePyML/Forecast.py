@@ -23,6 +23,7 @@ from fbprophet import Prophet
 import pandas as pd
 from sklearn.model_selection import ParameterGrid
 
+
 class Forecast:
     
     def preOutlierDetection(self, frame, options):
@@ -221,8 +222,10 @@ class Forecast:
         
         return fdict
 
-    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData):
-        model = Prophet(seasonality_mode = 'multiplicative')
+    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
+        nChangePoints = math.ceil(len(historicalData) * changePointFraction)
+        
+        model = Prophet(seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
@@ -270,11 +273,31 @@ class Forecast:
         pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
         pframe['y'] = historicalData[params.getParam('targetColumn', options)]
         
-        if 'hypertune' not in options or not(options['hypertune']):
-            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData)
+        if not(params.getParam('hypertune', options)):
+            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, 'multiplicative', 0.05, 10.0, 0.10)
         else:
-            # find best model through hyper-tuning
             forecast = None 
+            championP = None
+            championMAPE = 1E20
+            
+            # find best model through hyper-tuning
+            pvals = {'seasonality_mode':('multiplicative', 'additive'),
+               'changepoint_prior_scale':[0.05, 0.15, 0.25],
+              'holidays_prior_scale':[0.1, 1.0, 10.0],
+              'changepoint_fraction' : [0.05, 0.25, 0.40]}
+            
+            pgrid = ParameterGrid(pvals)
+                        
+            for p in pgrid:
+                challengerForecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, p['seasonality_mode'], p['changepoint_prior_scale'], p['holidays_prior_scale'], p['changepoint_fraction'])
+                mape = calcMAPE(challengerForecast['yhat'], frame[params.getParam('targetColumn', options)])
+            
+                if mape < championMAPE:
+                    championP = p
+                    championMAPE = mape 
+                    forecast = challengerForecast
+            
+            print('Champion parameters: ', championP, 'Champion MAPE: ', championMAPE)
         
         frame['X_LPI'] = forecast['yhat_lower']
         frame['X_FORECAST'] = forecast['yhat']
