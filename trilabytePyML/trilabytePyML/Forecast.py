@@ -245,7 +245,7 @@ class Forecast:
             freq = 'D' #daily
         elif (periodicity == 4):
             freq = 'QS' #quarterly start
-        elif (periodicity == 52):
+        elif (periodicity == 52 or periodicity == 53):
             freq = 'W' #weekly
 
         future = model.make_future_dataframe(periods=len(futureData), freq=freq)
