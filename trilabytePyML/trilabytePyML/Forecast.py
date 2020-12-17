@@ -22,6 +22,7 @@ import trilabytePyML.util.Parameters as params
 from fbprophet import Prophet
 import pandas as pd
 from sklearn.model_selection import ParameterGrid
+import json
 
 
 class Forecast:
@@ -220,6 +221,8 @@ class Forecast:
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
         
+        frame['X_HYPERTUNE'] = None
+        
         return fdict
 
     def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
@@ -285,6 +288,7 @@ class Forecast:
         pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
         pframe['y'] = historicalData[params.getParam('targetColumn', options)]
         
+        championPJSON = None
         if not(params.getParam('hypertune', options)):
             forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, 'multiplicative', 0.05, 10.0, 0.10)
         else:
@@ -309,8 +313,10 @@ class Forecast:
                     championMAPE = mape 
                     forecast = challengerForecast
             
-            print('Champion parameters: ', championP, 'Champion MAPE: ', championMAPE)
-        
+            championPJSON = json.dumps(championP)
+            
+            print('Champion parameters: ', championPJSON, 'Champion MAPE: ', championMAPE)
+    
         frame['X_LPI'] = forecast['yhat_lower']
         frame['X_FORECAST'] = forecast['yhat']
         frame['X_UPI'] = forecast['yhat_upper']
@@ -335,6 +341,7 @@ class Forecast:
         frame['X_SEASONALITY_TYPE'] = None 
         frame['X_TREND_PREDICTED'] = None 
         frame['X_TREND_RATIO'] = None  
+        frame['X_HYPERTUNE'] = championPJSON
                 
         fdict = dict()
         fdict['MAPE'] = mape
@@ -413,7 +420,8 @@ class Forecast:
         frame['X_SEASONALITY'] = None 
         frame['X_SEASONALITY_TYPE'] = None 
         frame['X_TREND_PREDICTED'] = None 
-        frame['X_TREND_RATIO'] = None  
+        frame['X_TREND_RATIO'] = None 
+        frame['X_HYPERTUNE'] = None 
         
         fdict = dict()
         fdict['frame'] = frame
