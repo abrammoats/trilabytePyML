@@ -225,7 +225,7 @@ class Forecast:
     def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
         nChangePoints = math.ceil(len(historicalData) * changePointFraction)
         
-        model = Prophet(seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        model = Prophet(interval_width=0.95,seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
