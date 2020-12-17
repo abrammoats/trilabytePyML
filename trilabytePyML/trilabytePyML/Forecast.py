@@ -233,10 +233,22 @@ class Forecast:
         
         model.fit(pframe)
 
-        if params.getParam('periodicity', options) == 12:
-            future = model.make_future_dataframe(periods=len(futureData), freq='MS')
-        else: 
-            future = model.make_future_dataframe(periods=len(futureData))
+        #
+        # Frequencies are defined here:
+        # https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
+        #
+        periodicity = params.getParam('periodicity', options) 
+        freq = None
+        if (periodicity == 12):
+            freq = 'MS' #monthly start
+        elif (periodicity == 365):
+            freq = 'D' #daily
+        elif (periodicity == 4):
+            freq = 'QS' #quarterly start
+        elif (periodicity == 52):
+            freq = 'W' #weekly
+
+        future = model.make_future_dataframe(periods=len(futureData), freq=freq)
         
         for pred in params.getParam('predictorColumns', options):
             future[pred] = frame[pred]
