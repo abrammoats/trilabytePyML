@@ -22,7 +22,7 @@
 	"seasonality": "Auto",
 	"autoDetectOutliers": true,
 	"outlierStdevMultiplier": 3.0,
-	"seasonalityBandwidth": 0.6,
+	"seasonalityBandwidth": 0.7,
 	"ridgeAlpha": 1.0,
 	"timestampColumn": "CAL_DATE",
 	"forceNonNegative": false,
