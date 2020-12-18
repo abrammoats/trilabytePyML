@@ -144,9 +144,7 @@ if __name__ == '__main__':
     print("")
     print("Required Librarires:")
     print("pip install pandas loess scipy numpy scikit-learn pmdarima")
-    print("conda install -c anaconda ephem")
-    print("conda install -c conda-forge pystan")
-    print("conda install -c conda-forge fbprophet")
+    print("conda install -c anaconda ephem pystan fbprophet")
     print("-------------------------------")
     print("Usage: python -m trilabytePyML.AutoForecast [json forecastMLR options] [csv source data] [output csv file]")
     print("-------------------------------")
@@ -156,7 +154,7 @@ if __name__ == '__main__':
     DEBUG = True 
   
     if DEBUG:
-        fileName = 'c:/temp/retail_unit_demand3.csv'
+        fileName = 'c:/temp/retail_unit_demand.csv'
         jsonFileName = 'c:/temp/retail_unit_demand_options.json'
         outputFileName = 'c:/temp/retail_unit_demand_forecast.csv'
     else:
