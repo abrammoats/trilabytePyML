@@ -228,7 +228,7 @@ class Forecast:
     def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
         nChangePoints = math.ceil(len(historicalData) * changePointFraction)
         
-        model = Prophet(interval_width=0.95,seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        model = Prophet(interval_width=0.95, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
@@ -243,13 +243,13 @@ class Forecast:
         periodicity = params.getParam('periodicity', options) 
         freq = None
         if (periodicity == 12):
-            freq = 'MS' #monthly start
+            freq = 'MS'  # monthly start
         elif (periodicity == 365):
-            freq = 'D' #daily
+            freq = 'D'  # daily
         elif (periodicity == 4):
-            freq = 'QS' #quarterly start
+            freq = 'QS'  # quarterly start
         elif (periodicity == 52 or periodicity == 53):
-            freq = 'W' #weekly
+            freq = 'W'  # weekly
 
         future = model.make_future_dataframe(periods=len(futureData), freq=freq)
         
@@ -300,7 +300,7 @@ class Forecast:
             pvals = {'seasonality_mode':('multiplicative', 'additive'),
                'changepoint_prior_scale':[0.05, 0.15, 0.25],
               'holidays_prior_scale':[0.1, 1.0, 10.0],
-              'changepoint_fraction' : [0.05, 0.25, 0.40]}
+              'changepoint_fraction': [0.05, 0.25, 0.40]}
             
             pgrid = ParameterGrid(pvals)
                         
@@ -378,7 +378,7 @@ class Forecast:
         if len(params.getParam('predictorColumns', options)) > 0:
             x = historicalData[params.getParam('predictorColumns', options)]
             model = pm.auto_arima(y, exogenous=x, seasonal=True,
-                     stepwise=True, suppress_warnings=True,
+                     stepwise=not(params.getParam('hypertune', options)), suppress_warnings=True,
                      error_action='ignore')
 
             histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)
