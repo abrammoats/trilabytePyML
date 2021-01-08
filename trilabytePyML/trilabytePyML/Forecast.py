@@ -233,7 +233,7 @@ class Forecast:
         weeklySeasonality = (periodicity == 52 or periodicity == 53)
         dailySeasonality = (periodicity == 356)
         
-        model = Prophet(yearly_seasonality=False, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=0.95, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        model = Prophet(yearly_seasonality=True, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=0.95, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
