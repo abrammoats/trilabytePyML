@@ -304,7 +304,7 @@ class Forecast:
             pvals = {'seasonality_mode':('multiplicative', 'additive'),
                'changepoint_prior_scale':[0.05, 0.15, 0.25],
               'holidays_prior_scale':[0.1, 1.0, 10.0],
-              'changepoint_fraction' : [0.05, 0.25, 0.40]}
+              'changepoint_fraction': [0.05, 0.25, 0.40]}
             
             pgrid = ParameterGrid(pvals)
                         
@@ -382,7 +382,7 @@ class Forecast:
         if len(params.getParam('predictorColumns', options)) > 0:
             x = historicalData[params.getParam('predictorColumns', options)]
             model = pm.auto_arima(y, exogenous=x, seasonal=True,
-                     stepwise=True, suppress_warnings=True,
+                     stepwise=not(params.getParam('hypertune', options)), suppress_warnings=True,
                      error_action='ignore')
 
             histPreds, histConf_int = model.predict_in_sample(exogenous=x, return_conf_int=True)

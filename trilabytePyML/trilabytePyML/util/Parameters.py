@@ -9,15 +9,15 @@ def getParam(param, options):
         defaults['predictorColumns'] = []
         defaults['targetColumn'] = None 
         defaults['periodicity'] = 12
-        defaults['seasonality'] = 'Multiplicative' #'Auto'  # 'Auto','None','Additive','Multiplicative' 
-        defaults['method'] = 'MLR' #'ARIMA','MLR','Prophet'
+        defaults['seasonality'] = 'Auto' #'Auto'  # 'Auto','None','Additive','Multiplicative' 
+        defaults['method'] = 'Auto' #'Auto','ARIMA','MLR','Prophet'
         defaults['timestampColumn'] = "CAL_DATE" #only for FBProphet forecast
-        defaults['autoDetectOutliers'] = False
+        defaults['autoDetectOutliers'] = True
         defaults['outlierStdevMultiplier'] = 3.0
-        defaults['seasonalityBandwidth'] = 0.6
+        defaults['seasonalityBandwidth'] = 0.7
         defaults['ridgeAlpha'] = 1.0
         defaults['forceNonNegative'] = False
-        defaults['hypertune'] = False 
+        defaults['hypertune'] = True 
         
         val = None if not(param in defaults) else defaults[param]
         
