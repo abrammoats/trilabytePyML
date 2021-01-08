@@ -228,7 +228,12 @@ class Forecast:
     def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
         nChangePoints = math.ceil(len(historicalData) * changePointFraction)
         
-        model = Prophet(interval_width=0.95,seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        periodicity = params.getParam('periodicity', options) 
+        
+        weeklySeasonality = (periodicity == 52 or periodicity == 53)
+        dailySeasonality = (periodicity == 356)
+        
+        model = Prophet(yearly_seasonality=False, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=0.95, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
@@ -240,16 +245,15 @@ class Forecast:
         # Frequencies are defined here:
         # https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         #
-        periodicity = params.getParam('periodicity', options) 
         freq = None
         if (periodicity == 12):
-            freq = 'MS' #monthly start
+            freq = 'MS'  # monthly start
         elif (periodicity == 365):
-            freq = 'D' #daily
+            freq = 'D'  # daily
         elif (periodicity == 4):
-            freq = 'QS' #quarterly start
+            freq = 'QS'  # quarterly start
         elif (periodicity == 52 or periodicity == 53):
-            freq = 'W' #weekly
+            freq = 'W'  # weekly
 
         future = model.make_future_dataframe(periods=len(futureData), freq=freq)
         
