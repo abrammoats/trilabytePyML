@@ -18,6 +18,7 @@ def getParam(param, options):
         defaults['ridgeAlpha'] = 1.0
         defaults['forceNonNegative'] = False
         defaults['hypertune'] = True 
+        defaults['numHoldoutRows'] = 0
         
         val = None if not(param in defaults) else defaults[param]
         

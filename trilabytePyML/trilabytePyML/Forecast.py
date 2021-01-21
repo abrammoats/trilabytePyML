@@ -27,6 +27,14 @@ import json
 
 class Forecast:
     
+    def lastNonNullIndex(self, x):
+        idx = 0
+        for i in range(len(x)):
+            if not(np.isnan(x[i])):
+                idx = i
+        
+        return idx
+    
     def preOutlierDetection(self, frame, options):
         targetColumn = options['targetColumn'] 
         
@@ -93,10 +101,14 @@ class Forecast:
         options['targetColumn'] = newTargetColumn
         
         # split the data into past/future based on null in target column 
-        nullIdx = frame[targetColumn].isnull()
-        futureData = frame[nullIdx]
-        historicalIdx = list(map(operator.not_, nullIdx))
-        historicalData = frame[historicalIdx] 
+        lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
+        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        lastNonNullIdx = lastNonNullIdx - numHoldoutRows
+        historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
+        historicalData = frame[historicalIdx]
+        futureIdx = frame['X_INDEX'] > lastNonNullIdx
+        futureData = frame[futureIdx]
+        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
          
         x = np.asarray(historicalData['X_INDEX'].tolist())    
         y = np.asarray(historicalData[newTargetColumn].tolist())
@@ -109,7 +121,8 @@ class Forecast:
           
         fdict = dict()
         fdict['historicalIdx'] = historicalIdx
-        fdict['futureIdx'] = nullIdx
+        fdict['futureIdx'] = futureIdx
+        fdict['holdoutIdx'] = holdoutIdx
         fdict['frame'] = frame
         fdict['options'] = options
 
@@ -283,10 +296,14 @@ class Forecast:
         frame['X_INDEX'] = frame.index.values
         
         # split the data into past/future based on null in target column 
-        nullIdx = frame[targetColumn].isnull()
-        futureData = frame[nullIdx]
-        historicalIdx = list(map(operator.not_, nullIdx))
-        historicalData = frame[historicalIdx] 
+        lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
+        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        lastNonNullIdx = lastNonNullIdx - numHoldoutRows
+        historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
+        historicalData = frame[historicalIdx]
+        futureIdx = frame['X_INDEX'] > lastNonNullIdx
+        futureData = frame[futureIdx]
+        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
                 
         pframe = pd.DataFrame()
         pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
@@ -372,10 +389,14 @@ class Forecast:
         frame['X_INDEX'] = frame.index.values
         
         # split the data into past/future based on null in target column 
-        nullIdx = frame[targetColumn].isnull()
-        futureData = frame[nullIdx]
-        historicalIdx = list(map(operator.not_, nullIdx))
-        historicalData = frame[historicalIdx] 
+        lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
+        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        lastNonNullIdx = lastNonNullIdx - numHoldoutRows
+        historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
+        historicalData = frame[historicalIdx]
+        futureIdx = frame['X_INDEX'] > lastNonNullIdx
+        futureData = frame[futureIdx]
+        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
         
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
