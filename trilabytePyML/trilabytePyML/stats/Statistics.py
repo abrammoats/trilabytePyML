@@ -12,6 +12,9 @@ import math
 import numpy as np
 
 def calcMAPE(x, y):
+    x = x.to_numpy()
+    y = y.to_numpy()
+    
     pes = []
     
     for idx in range(len(x)):

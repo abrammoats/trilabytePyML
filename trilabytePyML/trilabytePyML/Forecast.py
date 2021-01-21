@@ -108,7 +108,10 @@ class Forecast:
         historicalData = frame[historicalIdx]
         futureIdx = frame['X_INDEX'] > lastNonNullIdx
         futureData = frame[futureIdx]
-        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
+        if (numHoldoutRows > 0):
+            evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), frame['X_INDEX']))
+        else:
+            evalIdx = historicalIdx
          
         x = np.asarray(historicalData['X_INDEX'].tolist())    
         y = np.asarray(historicalData[newTargetColumn].tolist())
@@ -122,7 +125,7 @@ class Forecast:
         fdict = dict()
         fdict['historicalIdx'] = historicalIdx
         fdict['futureIdx'] = futureIdx
-        fdict['holdoutIdx'] = holdoutIdx
+        fdict['evalIdx'] = evalIdx
         fdict['frame'] = frame
         fdict['options'] = options
 
@@ -212,8 +215,11 @@ class Forecast:
             frame['X_FORECAST'] = frame['X_SEASONALITY'] * frame['X_TREND_PREDICTED']
         else:
             frame['X_FORECAST'] = frame['X_TREND_PREDICTED']
-                
-        mape = calcMAPE(frame['X_FORECAST'], frame[params.getParam('targetColumn', options)])
+            
+        evalIdx = fdict['evalIdx']
+        targetColumn = params.getParam('targetColumn', options)
+        evalFrame = frame[evalIdx]
+        mape = calcMAPE(evalFrame['X_FORECAST'], evalFrame[targetColumn])
         frame['X_MAPE'] = mape
         fdict['MAPE'] = mape
         
@@ -303,7 +309,10 @@ class Forecast:
         historicalData = frame[historicalIdx]
         futureIdx = frame['X_INDEX'] > lastNonNullIdx
         futureData = frame[futureIdx]
-        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
+        if (numHoldoutRows > 0):
+            evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), frame['X_INDEX']))
+        else:
+            evalIdx = historicalIdx
                 
         pframe = pd.DataFrame()
         pframe['ds'] = historicalData[params.getParam('timestampColumn', options)]
@@ -327,7 +336,8 @@ class Forecast:
                         
             for p in pgrid:
                 challengerForecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, p['seasonality_mode'], p['changepoint_prior_scale'], p['holidays_prior_scale'], p['changepoint_fraction'])
-                mape = calcMAPE(challengerForecast['yhat'], frame[params.getParam('targetColumn', options)])
+                evalFrame = challengerForecast[evalIdx]
+                mape = calcMAPE(evalFrame['yhat'], evalFrame[params.getParam('targetColumn', options)])
             
                 if mape < championMAPE:
                     championP = p
@@ -342,7 +352,8 @@ class Forecast:
         frame['X_FORECAST'] = forecast['yhat']
         frame['X_UPI'] = forecast['yhat_upper']
         
-        mape = calcMAPE(frame['X_FORECAST'], frame[params.getParam('targetColumn', options)])
+        evalFrame = frame[evalIdx]
+        mape = calcMAPE(evalFrame['X_FORECAST'], evalFrame[params.getParam('targetColumn', options)])
         frame['X_MAPE'] = mape
         
         frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[params.getParam('targetColumn', options)] 
@@ -396,7 +407,10 @@ class Forecast:
         historicalData = frame[historicalIdx]
         futureIdx = frame['X_INDEX'] > lastNonNullIdx
         futureData = frame[futureIdx]
-        holdoutIdx = frame['X_INDEX'] > lastNonNullIdx and frame['X_INDEX'] < lastNonNullIdx + numHoldoutRows
+        if (numHoldoutRows > 0):
+            evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), frame['X_INDEX']))
+        else:
+            evalIdx = historicalIdx
         
         y = np.asarray(historicalData[newTargetColumn].tolist())
         
@@ -427,7 +441,8 @@ class Forecast:
         frame['X_FORECAST'] = forecast 
         frame['X_UPI'] = upi 
         
-        mape = calcMAPE(frame['X_FORECAST'], frame[targetColumn])
+        evalFrame = frame[evalIdx]
+        mape = calcMAPE(evalFrame['X_FORECAST'], evalFrame[targetColumn])
         frame['X_MAPE'] = mape
         
         frame['X_RESIDUAL'] = frame['X_FORECAST'] - frame[targetColumn] 
