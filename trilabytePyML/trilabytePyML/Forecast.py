@@ -335,7 +335,7 @@ class Forecast:
         for index, row in frame.iterrows():
             frame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
         
-        if 'forceNonNegative' in fdict['options'] and params.getParam('forceNonNegative', fdict['options']):
+        if 'forceNonNegative' in options and params.getParam('forceNonNegative', options):
             frame.loc[frame['X_FORECAST'] < 0, 'X_FORECAST'] = 0
             frame.loc[frame['X_UPI'] < 0, 'X_UPI'] = 0
             frame.loc[frame['X_LPI'] < 0, 'X_LPI'] = 0
