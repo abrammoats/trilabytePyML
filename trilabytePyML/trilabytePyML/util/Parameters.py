@@ -19,6 +19,10 @@ def getParam(param, options):
         defaults['forceNonNegative'] = False
         defaults['hypertune'] = True 
         defaults['numHoldoutRows'] = 0
+        defaults['interval_width'] = 0.95
+        defaults['changepoint_prior_scale'] = 0.05 
+        defaults['holidays_prior_scale'] = 10.0
+        defaults['changepoints_fraction'] = 0.1
         
         val = None if not(param in defaults) else defaults[param]
         

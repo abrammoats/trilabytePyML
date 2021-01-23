@@ -102,7 +102,7 @@ class Forecast:
         
         # split the data into past/future based on null in target column 
         lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
-        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        numHoldoutRows = params.getParam('numHoldoutRows', options)
         lastNonNullIdx = lastNonNullIdx - numHoldoutRows
         historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
         historicalData = frame[historicalIdx]
@@ -248,7 +248,7 @@ class Forecast:
         
         return fdict
 
-    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, changePointPriorScale, holidayPriorScale, changePointFraction):
+    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, intervalWidth, changePointPriorScale, holidayPriorScale, changePointFraction):
         nChangePoints = math.ceil(len(historicalData) * changePointFraction)
         
         periodicity = params.getParam('periodicity', options) 
@@ -256,7 +256,7 @@ class Forecast:
         weeklySeasonality = (periodicity == 52 or periodicity == 53)
         dailySeasonality = (periodicity == 356)
         
-        model = Prophet(yearly_seasonality=True, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=0.95, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        model = Prophet(yearly_seasonality=True, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=intervalWidth, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
@@ -307,7 +307,7 @@ class Forecast:
         
         # split the data into past/future based on null in target column 
         lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
-        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        numHoldoutRows = params.getParam('numHoldoutRows', options)
         lastNonNullIdx = lastNonNullIdx - numHoldoutRows
         historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
         historicalData = frame[historicalIdx]
@@ -324,7 +324,12 @@ class Forecast:
         
         championPJSON = None
         if not(params.getParam('hypertune', options)):
-            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, 'multiplicative', 0.05, 10.0, 0.10)
+            interval_width = params.getParam('interval_width', options)
+            changepoint_prior_scale = params.getParam('changepoint_prior_scale', options)
+            holidays_prior_scale = params.getParam('holidays_prior_scale', options)
+            changepoints_fraction = params.getParam('changepoints_fraction', options)
+            
+            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, 'multiplicative', interval_width, changepoint_prior_scale, holidays_prior_scale, changepoints_fraction)
         else:
             forecast = None 
             championP = None
@@ -334,14 +339,17 @@ class Forecast:
             pvals = {'seasonality_mode':('multiplicative', 'additive'),
                'changepoint_prior_scale':[0.05, 0.15, 0.25],
               'holidays_prior_scale':[0.1, 1.0, 10.0],
-              'changepoint_fraction': [0.05, 0.25, 0.40]}
+              'changepoint_fraction': [0.05, 0.1, 0.2]}
             
             pgrid = ParameterGrid(pvals)
-                        
+            
+            interval_width = params.getParam('interval_width', options)            
+            
             for p in pgrid:
-                challengerForecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, p['seasonality_mode'], p['changepoint_prior_scale'], p['holidays_prior_scale'], p['changepoint_fraction'])
+                challengerForecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, p['seasonality_mode'], interval_width, p['changepoint_prior_scale'], p['holidays_prior_scale'], p['changepoint_fraction'])
                 evalFrame = challengerForecast[evalIdx]
-                mape = calcMAPE(evalFrame['yhat'], evalFrame[params.getParam('targetColumn', options)])
+                actualsFrame = frame[evalIdx]
+                mape = calcMAPE(evalFrame['yhat'], actualsFrame[params.getParam('targetColumn', options)])
             
                 if mape < championMAPE:
                     championP = p
@@ -408,7 +416,7 @@ class Forecast:
         
         # split the data into past/future based on null in target column 
         lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
-        numHoldoutRows = params.getParam('numHoldoutRows',options)
+        numHoldoutRows = params.getParam('numHoldoutRows', options)
         lastNonNullIdx = lastNonNullIdx - numHoldoutRows
         historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
         historicalData = frame[historicalIdx]

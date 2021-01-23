@@ -90,12 +90,16 @@ def splitFramesAndForecast(frame, options):
                 
                 if (mlrMAPE <= minMAPE):
                     frame = mlrFrame
+                    frame['X_METHOD'] = 'MLR'
                 elif (prophetMAPE <= minMAPE):
                     frame = prophetFrame
+                    frame['X_METHOD'] = 'Prophet'
                 elif (arimaMAPE <= minMAPE):
-                    frame = arimaFrame      
+                    frame = arimaFrame
+                    frame['X_METHOD'] = 'ARIMA'      
                 else:
-                    frame = ensembleFrame                         
+                    frame = ensembleFrame
+                    frame['X_METHOD'] = 'Ensemble'                         
                 
             else:
                 frame = forecastSingleFrame(frame, options.copy())
