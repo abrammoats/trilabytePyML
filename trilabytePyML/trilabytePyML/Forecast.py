@@ -145,6 +145,10 @@ class Forecast:
         xscore = frame[params.getParam('predictorColumns', options)]
         yhat = model.predict(xscore)
         
+        frame['X_PREDICTORS'] = ','.join(params.getParam('predictorColumns', options))
+        frame['X_COEFFICIENTS'] = ','.join(map(str, model.coef_))
+        frame['X_INTERCEPT'] = str(model.intercept_)
+        
         frame['X_TREND_PREDICTED'] = yhat
         
         return fdict
@@ -373,6 +377,9 @@ class Forecast:
         frame['X_SEASONALITY_TYPE'] = None 
         frame['X_TREND_PREDICTED'] = None 
         frame['X_TREND_RATIO'] = None  
+        frame['X_PREDICTORS'] = None
+        frame['X_COEFFICIENTS'] = None
+        frame['X_INTERCEPT'] = None
         frame['X_HYPERTUNE'] = championPJSON
                 
         fdict = dict()
@@ -462,6 +469,9 @@ class Forecast:
         frame['X_TREND_PREDICTED'] = None 
         frame['X_TREND_RATIO'] = None 
         frame['X_HYPERTUNE'] = None 
+        frame['X_PREDICTORS'] = None
+        frame['X_COEFFICIENTS'] = None
+        frame['X_INTERCEPT'] = None
         
         fdict = dict()
         fdict['frame'] = frame
