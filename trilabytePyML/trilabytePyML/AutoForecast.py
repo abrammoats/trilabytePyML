@@ -76,9 +76,31 @@ def splitFramesAndForecast(frame, options):
                 
                 if 'X_FORECAST' in mlrFrame and 'X_FORECAST' in prophetFrame and 'X_FORECAST' in arimaFrame:
                     ensembleFrame = mlrFrame.copy() 
+                    
+                    # we calculate MAPE using original data column
+                    targetColumn = params.getParam('targetColumn', options)
+                    if (targetColumn.startswith('X_')):
+                        targetColumn = targetColumn[2:]
+                    
+                    # split the data into past/future based on null in target column 
+                    numHoldoutRows = params.getParam('numHoldoutRows', options)
+                    lastNonNullIdx = Forecast().lastNonNullIndex(ensembleFrame[targetColumn])
+                    lastNonNullIdx = lastNonNullIdx - numHoldoutRows
+        
+                    if (numHoldoutRows > 0):
+                        evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), ensembleFrame['X_INDEX']))
+                    else:
+                        evalIdx = ensembleFrame['X_INDEX'] <= lastNonNullIdx
+                    
                     ensembleFrame['X_FORECAST'] = list(map(lambda x, y , z: median([x, y, z]), mlrFrame['X_FORECAST'], arimaFrame['X_FORECAST'], prophetFrame['X_FORECAST']))
-                    ensembleMAPE = calcMAPE(ensembleFrame['X_FORECAST'], ensembleFrame[params.getParam('targetColumn', options)])
+                    ensembleFrame['X_LPI'] = list(map(lambda x, y , z: median([x, y, z]), mlrFrame['X_LPI'], arimaFrame['X_LPI'], prophetFrame['X_LPI']))
+                    ensembleFrame['X_UPI'] = list(map(lambda x, y , z: median([x, y, z]), mlrFrame['X_UPI'], arimaFrame['X_UPI'], prophetFrame['X_UPI']))
+                    
+                    evalFrame = ensembleFrame[evalIdx]
+                    ensembleMAPE = calcMAPE(evalFrame['X_FORECAST'], evalFrame[targetColumn])
                     ensembleFrame['X_MAPE'] = ensembleMAPE
+                    for index, row in ensembleFrame.iterrows():
+                        ensembleFrame['X_APE'][index] = (abs(row['X_FORECAST'] - row[targetColumn]) / row[targetColumn] * 100.0) if row[targetColumn] != 0 else None
                     
                     mapes = [mlrMAPE, arimaMAPE, prophetMAPE, ensembleMAPE]
                 else:
