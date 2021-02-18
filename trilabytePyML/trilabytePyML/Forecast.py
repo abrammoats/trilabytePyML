@@ -102,23 +102,32 @@ class Forecast:
         
         # split the data into past/future based on null in target column 
         lastNonNullIdx = self.lastNonNullIndex(frame[targetColumn])
+        fullHistoricalIdx = frame['X_INDEX'] <= lastNonNullIdx
+        
+        # we use full history for trending/smoothing (but NOT modeling in the future)
+        fullHistoricalData = frame[fullHistoricalIdx]
         numHoldoutRows = params.getParam('numHoldoutRows', options)
+        fullFutureIdx = frame['X_INDEX'] > lastNonNullIdx
+        fullFutureData = frame[fullFutureIdx]
+        
+        # we store history minus hold-out for future modeling
         lastNonNullIdx = lastNonNullIdx - numHoldoutRows
         historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
-        historicalData = frame[historicalIdx]
+        #historicalData = frame[historicalIdx]
         futureIdx = frame['X_INDEX'] > lastNonNullIdx
-        futureData = frame[futureIdx]
+        #futureData = frame[futureIdx]
+        
         if (numHoldoutRows > 0):
             evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), frame['X_INDEX']))
         else:
             evalIdx = historicalIdx
          
-        x = np.asarray(historicalData['X_INDEX'].tolist())    
-        y = np.asarray(historicalData[newTargetColumn].tolist())
+        x = np.asarray(fullHistoricalData['X_INDEX'].tolist())    
+        y = np.asarray(fullHistoricalData[newTargetColumn].tolist())
         bandwidth = params.getParam('seasonalityBandwidth', options)
         xout, yout, weights = lo.loess_1d(x, y, frac=bandwidth, degree=2)
         
-        frame['X_TREND'] = np.append(yout, np.asarray(futureData[targetColumn].tolist())) 
+        frame['X_TREND'] = np.append(yout, np.asarray(fullFutureData[targetColumn].tolist())) 
         frame['X_TREND_DIFF'] = frame[targetColumn] - frame['X_TREND']
         frame['X_TREND_RATIO'] = frame[targetColumn] / frame['X_TREND']
           
