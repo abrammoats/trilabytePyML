@@ -12,8 +12,24 @@ import sys
 import pandas as pd 
 from sklearn.linear_model import Ridge
 
+def buildSampleoptionsJSONFile(jsonFileName: str) -> None:
+    """
+    This function creates a JSON file storing some of the options information
+    for use with the iris_ridge data in the samples folder that comes with
+    the module. It should be saved to the working directory under the name
+    passed as the jsonFileName parameter.
 
-def buildSampleoptionsJSONFile(jsonFileName):
+    Parameters
+    ----------
+    jsonFileName : str
+        Desired name of JSON file
+
+    Returns
+    -------
+    None
+        No output
+
+    """
     options = dict()
     options['splitColumns'] = ['Split']
     options['predictorColumns'] = ['Sepal.Width', 'Sepal.Length', 'Petal.Width']
@@ -27,7 +43,34 @@ def buildSampleoptionsJSONFile(jsonFileName):
         json.dump(options, fp)
 
         
-def predict(frame, options):
+def predict(frame: pd.Dataframe, options: dict) -> dict:
+    """
+    The function takes as an argument the "frame" parameter, which is a 
+    pandas dataframe with the data involved in the forecast, and the "options"
+    parameter, which is a dictionary with at least the roleColumn, 
+    predictorColumns, targetColumn, and ridgeAlpha keys defined. The function
+    takes the training subset of the frame parameter and trains a ridge
+    regression on it. It then applies the ridge regression to the entire
+    dataset and returns fdict. fdict['frame'] will return a pandas dataframe 
+    that is identical to the original "frame" parameter in every way except 
+    for the inclusion of a X_PREDICTED column, which will be the ridge
+    model results. Utilized in the splitIntoFramesAndPredict function.
+
+    Parameters
+    ----------
+    frame : pd.Dataframe
+        pandas dataframe with info to be forecast
+    options : dict
+        dictionary of options and parameters for the module
+
+    Returns
+    -------
+    dict
+        Has a single key, 'frame', which contains the original dataframe
+        passed through the "frame" parameter, plus a column specifying the
+        model predictions
+
+    """
     fdict = dict()
     
     trainFrame = frame.loc[frame[options['roleColumn']] == 'TRAINING']
@@ -46,7 +89,31 @@ def predict(frame, options):
     fdict['frame'] = frame
     return(fdict)
 
-def splitIntoFramesAndPredict(frame, options):
+def splitIntoFramesAndPredict(frame: pd.Dataframe, options: dict) -> pd.Dataframe:
+    """
+    This function expands on the functionality of the predict() function
+    and allows for several predictions to be run on different groupings
+    of the original "frame" parameter. These groupings are determined by
+    the only additional "options" key that must be specified for this function,
+    ['splitColumns']. 
+    
+    NOTE: Future versions may want to consider not requiring the setting of
+    a ['splitColumns'] and defaulting to predict() if no value is defined for
+    that key in options
+
+    Parameters
+    ----------
+    frame : pd.Dataframe
+        pandas dataframe with information to be forecast
+    options : dict
+        provides parameters for the forecast
+
+    Returns
+    -------
+    outputFrame : TYPE
+        Returns multiple forecasts
+
+    """
     frames = list(frame.groupby(by=options['splitColumns']))
     
     outputFrame = None
@@ -69,7 +136,7 @@ if __name__ == '__main__':
     
     print("Ridge - Stacked Data with Role Definition (TRAINING,SCORING)")
     print("-------------------------------")
-    print("Required Librarires:")
+    print("Required Libraries:")
     print("pip install pandas loess scipy numpy scikit-learn")
     print("-------------------------------")
     print("Usage: python -m trilabytePyML.Ridge [json options] [csv source data] [output csv file]")
@@ -102,4 +169,3 @@ if __name__ == '__main__':
     print("Output file: ", outputFileName)
      
     print("Predictions complete...")
-
