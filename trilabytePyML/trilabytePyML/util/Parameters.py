@@ -23,6 +23,7 @@ def getParam(param, options):
         defaults['changepoint_prior_scale'] = 0.05 
         defaults['holidays_prior_scale'] = 10.0
         defaults['changepoints_fraction'] = 0.1
+        defaults['scalePredictors'] = False 
         
         val = None if not(param in defaults) else defaults[param]
         

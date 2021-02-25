@@ -86,6 +86,18 @@ class Forecast:
         
         frame['X_INDEX'] = frame.index.values
         
+        # scale predictors between 0 and 1 
+        try:
+            newPredCols = []
+            if params.getParam('scalePredictors', options):
+                for predCol in params.getParam('predictorColumns', options):
+                    newCol = 'X_' + predCol 
+                    frame[newCol] = (frame[predCol] - frame[predCol].min()) / (frame[predCol].max() - frame[predCol].min())
+                    newPredCols.append(newCol)
+                options['predictorColumns'] = newPredCols
+        except Exception as e:
+            print("Unable to scale predictors: ", e)
+        
         # ensure predictors and target are float
         frame[targetColumn] = frame[targetColumn].astype(float)
         frame[params.getParam('predictorColumns', options)] = frame[params.getParam('predictorColumns', options)].astype(float) 
