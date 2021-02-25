@@ -222,7 +222,7 @@ class Forecast:
        
     def forecastMLR(self, frame, options):
         predCols = params.getParam('predictorColumns', options)
-        if len(predCols) == 0:
+        if not('X_INDEX' in predCols):
             predCols.append('X_INDEX')
             options['predictorColumns'] = predCols 
     
