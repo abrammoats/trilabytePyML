@@ -132,7 +132,30 @@ class Forecast:
         
         return fdict
 
-    def prepare(self, frame: pd.Series, options: dict) -> dict:
+    def prepare(self, frame: pd.Dataframe, options: dict) -> dict:
+        """
+        This function does a few things in an attempt to prepare the data for
+        forecasting. First, if specified in the 'options' dictionary, it will
+        scale all of the variables to between 0 and 1. It will then add to the
+        dataframe 'frame' an X_TREND, X_TREND_DIFF, and X_TREND_RATIO column
+        to be used in later modeling/prediction. It will also create, as 
+        specified in the 'options' dictionary, indexes that will be passed
+        through in the return to identify which parts of the model should be
+        used for training, evaluation, etc.
+
+        Parameters
+        ----------
+        frame : pd.Dataframe
+            
+        options : dict
+            DESCRIPTION.
+
+        Returns
+        -------
+        dict
+            DESCRIPTION.
+
+        """
         # create copy of target for modification (fill zeros with very small number)
         random.seed(158923)
         targetColumn = params.getParam('targetColumn', options)
@@ -176,6 +199,10 @@ class Forecast:
         fullFutureData = frame[fullFutureIdx]
         
         # we store history minus hold-out for future modeling
+        
+        # could these variables potentially be renamed?
+        # the subtraction of numHoldoutRows really changes the "concept"
+        # of what's being discussed here
         lastNonNullIdx = lastNonNullIdx - numHoldoutRows
         historicalIdx = frame['X_INDEX'] <= lastNonNullIdx
         #historicalData = frame[historicalIdx]
@@ -183,6 +210,8 @@ class Forecast:
         #futureData = frame[futureIdx]
         
         if (numHoldoutRows > 0):
+            # if variable names are switched as discussed above it would avoid
+            # some of the awkward constructions here
             evalIdx = list(map(lambda x: x > lastNonNullIdx and x <= (lastNonNullIdx + numHoldoutRows), frame['X_INDEX']))
         else:
             evalIdx = historicalIdx
@@ -192,8 +221,10 @@ class Forecast:
         bandwidth = params.getParam('seasonalityBandwidth', options)
         xout, yout, weights = lo.loess_1d(x, y, frac=bandwidth, degree=2)
         
-        frame['X_TREND'] = np.append(yout, np.asarray(fullFutureData[targetColumn].tolist())) 
+        frame['X_TREND'] = np.append(yout, np.asarray(fullFutureData[targetColumn].tolist()))
+        #for use with additive seasonality?
         frame['X_TREND_DIFF'] = frame[targetColumn] - frame['X_TREND']
+        #for use with multiplicative seasonality?
         frame['X_TREND_RATIO'] = frame[targetColumn] / frame['X_TREND']
           
         fdict = dict()
