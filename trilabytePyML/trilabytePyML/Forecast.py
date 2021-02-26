@@ -5,7 +5,7 @@
 #    Author: Scott Mutchler
 #    Contact: smutchler@trilabyte.com
 #
-
+from typing import Union
 import math
 import operator
 import random
@@ -26,8 +26,33 @@ import json
 
 
 class Forecast:
+    """
+    Things to add:
+        
+        - Brief summary of purpose and behavior
+        - Brief list and description of all public methods
+        - Class properties
+        - Stuff about subclasses I don't understand
+        
+    Seems like what we should do last
+    """
     
-    def lastNonNullIndex(self, x):
+    def lastNonNullIndex(self, x: Union[pd.Series, list]) -> int:
+        """
+        This function returns the index position of the last non-NaN value
+        in either a pd.Series or a list
+
+        Parameters
+        ----------
+        x : Union[pd.Series, list]
+            list or pd.Series to be analyzed
+
+        Returns
+        -------
+        int
+            highest index value at which x is not NaN
+
+        """
         idx = 0
         for i in range(len(x)):
             if not(np.isnan(x[i])):
@@ -35,7 +60,31 @@ class Forecast:
         
         return idx
     
-    def preOutlierDetection(self, frame, options):
+    def preOutlierDetection(self, frame: pd.Dataframe, options: dict) -> dict:
+        """
+        This function utilizes the loess method to strip the seasonality from
+        the target column and determine a trend. Based on the difference
+        between the trend and the actual target column, outliers are 
+        identified as a function of the options['outlierStdevMultiplier']
+        value, which should be an int or a float.
+
+        Parameters
+        ----------
+        frame : pd.Dataframe
+            pandas dataframe that includes the data to be forecast
+        options : dict
+            dictionary that includes at least 'seasonalityBandwidth', 
+            'targetColumn', 'outlierStdevMultiplier'
+
+        Returns
+        -------
+        dict
+            Will return with two keys, 'frame' which will be the original
+            pandas dataframe but now with the X_INTERPOLATED and X_OUTLIER
+            columns, and 'options', the value of which is whatever dictionary
+            was originally passed through the options parameter.
+
+        """
         targetColumn = options['targetColumn'] 
         
         frame['X_INDEX'] = frame.index.values
@@ -60,6 +109,10 @@ class Forecast:
         
         mult = params.getParam('outlierStdevMultiplier', options)
         
+        #identifies outliers based on the number of standard deviations
+        #from the mean as specified in line 100. It is thus not the strict
+        #mean of the target column, but the mean of the difference
+        #between the target column and the loess trend calculated in line 94.
         frame['X_OUTLIER'] = 0
         for index, row in frame.iterrows():
             diff = abs(frame['X_TREND_DIFF'][index])
@@ -79,7 +132,7 @@ class Forecast:
         
         return fdict
 
-    def prepare(self, frame, options):
+    def prepare(self, frame: pd.Series, options: dict) -> dict:
         # create copy of target for modification (fill zeros with very small number)
         random.seed(158923)
         targetColumn = params.getParam('targetColumn', options)
@@ -152,7 +205,29 @@ class Forecast:
 
         return fdict
 
-    def predictTrend(self, fdict):
+    def predictTrend(self, fdict: dict) -> dict:
+        """
+        Makes a prediction on the X_TREND column using the predictorColumns
+        as found in the options dictionary stored under the 'options' key in
+        fdict. It is trained on historical data but is then predicted using
+        all available data.
+
+        Parameters
+        ----------
+        fdict : dict
+            Dictionary object that must include at least a 'frame' key holding
+            the data columns specified in the options index, an 'options' key
+            holding the options index, and a 'hisotircalIdx' key specifying
+            the index of the historical data v the future data
+
+        Returns
+        -------
+        dict
+            Same as the fdict passed into the model, except that we now have
+            X_PREDICTORS, X_COEFFICIENTS, X_INTERCEPT, and X_TREND_PREDICTED
+            as columns in the dataframe stored in 'frame'
+
+        """
         frame = fdict['frame']
         historicalData = frame[fdict['historicalIdx']]
         options = fdict['options']
