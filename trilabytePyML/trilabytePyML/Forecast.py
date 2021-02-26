@@ -327,6 +327,11 @@ class Forecast:
         return fdict
        
     def forecastMLR(self, frame, options):
+        predCols = params.getParam('predictorColumns', options)
+        if not('X_INDEX' in predCols):
+            predCols.append('X_INDEX')
+            options['predictorColumns'] = predCols 
+    
         if params.getParam('autoDetectOutliers', options):
             fdict = self.preOutlierDetection(frame, options)
             frame = fdict['frame']
