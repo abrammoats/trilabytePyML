@@ -43,7 +43,7 @@ def buildSampleoptionsJSONFile(jsonFileName: str) -> None:
         json.dump(options, fp)
 
         
-def predict(frame: pd.Dataframe, options: dict) -> dict:
+def predict(frame: pd.DataFrame, options: dict) -> dict:
     """
     The function takes as an argument the "frame" parameter, which is a 
     pandas dataframe with the data involved in the forecast, and the "options"
@@ -89,7 +89,7 @@ def predict(frame: pd.Dataframe, options: dict) -> dict:
     fdict['frame'] = frame
     return(fdict)
 
-def splitIntoFramesAndPredict(frame: pd.Dataframe, options: dict) -> pd.Dataframe:
+def splitIntoFramesAndPredict(frame: pd.DataFrame, options: dict) -> pd.DataFrame:
     """
     This function expands on the functionality of the predict() function
     and allows for several predictions to be run on different groupings
