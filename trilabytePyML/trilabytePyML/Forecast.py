@@ -24,17 +24,22 @@ import pandas as pd
 from sklearn.model_selection import ParameterGrid
 import json
 
-
 class Forecast:
     """
-    Things to add:
-        
-        - Brief summary of purpose and behavior
-        - Brief list and description of all public methods
-        - Class properties
-        - Stuff about subclasses I don't understand
-        
-    Seems like what we should do last
+    This is a holding class for all the functions that are called in the
+    AutoForecast.py file in order to define the main function of the package,
+    splitFramesAndForecast(). 
+    
+    lastNonNullIndex() - finds last non NaN index in a pd.Series or lists
+    preOutlierDetection() - does preliminary outlier detection
+    prepare() - preps data based on options parameters for other functions
+    predictTrend() - strips out seasonality and adds a "trendline"
+    calcSeasonality() - calculates additive or multiplicative seasonality
+    forecastMLR() - creates a multiple linear regression forecast
+    forecastProphetInternal() - handles call to the actual Prophet() function
+    forecastProphet() - takes the results o forecastProphetInternal() and
+                        makes them usable in the context of this package
+    forecastARIMA - creates an ARIMA forecast
     """
     
     def lastNonNullIndex(self, x: Union[pd.Series, list]) -> int:
@@ -60,7 +65,7 @@ class Forecast:
         
         return idx
     
-    def preOutlierDetection(self, frame: pd.Dataframe, options: dict) -> dict:
+    def preOutlierDetection(self, frame: pd.DataFrame, options: dict) -> dict:
         """
         This function utilizes the loess method to strip the seasonality from
         the target column and determine a trend. Based on the difference
@@ -70,7 +75,7 @@ class Forecast:
 
         Parameters
         ----------
-        frame : pd.Dataframe
+        frame : pd.DataFrame
             pandas dataframe that includes the data to be forecast
         options : dict
             dictionary that includes at least 'seasonalityBandwidth', 
@@ -132,7 +137,7 @@ class Forecast:
         
         return fdict
 
-    def prepare(self, frame: pd.Dataframe, options: dict) -> dict:
+    def prepare(self, frame: pd.DataFrame, options: dict) -> dict:
         """
         This function does a few things in an attempt to prepare the data for
         forecasting. First, if specified in the 'options' dictionary, it will
@@ -145,15 +150,22 @@ class Forecast:
 
         Parameters
         ----------
-        frame : pd.Dataframe
-            
+        frame : pd.DataFrame
+            pandas dataframe that includes all the information necessary to
+            forecast
         options : dict
-            DESCRIPTION.
+            dictionary that includes at least the keys 'scalePredictors',
+            'predictorColumns', 'targetColumn', 'numHoldoutRows', and 
+            'seasonalityBandwidth'
 
         Returns
         -------
         dict
-            DESCRIPTION.
+            dictionary that includes the dataframe passed through the frame
+            parameter with additions, the options dictionary, and keys 
+            'historicalIdx', 'futureIdx', and 'evalIdx', corresponding to
+            the training, forecasting, and holdout periods as measured by
+            the index of the dataframe stored under the 'frame' key
 
         """
         # create copy of target for modification (fill zeros with very small number)
@@ -280,7 +292,24 @@ class Forecast:
         
         return fdict
 
-    def calcSeasonality(self, fdict):
+    def calcSeasonality(self, fdict: dict) -> dict:
+        """
+        Calculates the additive or multiplicative seasonality of the data 
+        contained in fdict['frame'] unless otherwise specified by 
+        fdict['periodicity'].
+
+        Parameters
+        ----------
+        fdict : dict
+            A dictionary that has gone through the prepare() function
+
+        Returns
+        -------
+        dict
+            equal to fdict parameter except for the addition of the 
+            X_SEASONALITY column in the dataframe stored in fdict['frame']
+
+        """
         frame = fdict['frame']
         historicalData = frame[fdict['historicalIdx']] 
         options = fdict['options']
@@ -326,7 +355,28 @@ class Forecast:
         
         return fdict
        
-    def forecastMLR(self, frame, options):
+    def forecastMLR(self, frame: pd.DataFrame, options: dict) -> dict:
+        """
+        Calculates the multiple linear regression (MLR) forecast for the
+        data provided in frame and the parameters specified in options.
+
+        Parameters
+        ----------
+        frame : pd.DataFrame
+            Data to be used to forecast
+        options : dict
+            dictionary that must include at least the predictors and the
+            target column specifications
+
+        Returns
+        -------
+        dict
+            Returns a dictionary that has, as its main components, the 
+            dataframe passed to frame but now with the forecast from MLR, 
+            as well as other MLR-specific columns like lower and upper bounds
+            on the forecast, etc etc
+
+        """
         predCols = params.getParam('predictorColumns', options)
         if not('X_INDEX' in predCols):
             predCols.append('X_INDEX')
@@ -344,7 +394,9 @@ class Forecast:
         
         options = fdict['options']
         frame['X_SEASONALITY_TYPE'] = params.getParam('seasonality', options)
-                
+        
+        #construct forecast from columns calculated by prepare(), 
+        #predictTrend() and calcSeasonality() functions
         if (params.getParam('seasonality', options) == 'Additive'):
             frame['X_FORECAST'] = frame['X_SEASONALITY'] + frame['X_TREND_PREDICTED']
         elif (params.getParam('seasonality', options) == 'Multiplicative'):
@@ -380,7 +432,55 @@ class Forecast:
         
         return fdict
 
-    def forecastProphetInternal(self, frame, options, pframe, historicalData, futureData, seasonalityMode, intervalWidth, changePointPriorScale, holidayPriorScale, changePointFraction):
+    def forecastProphetInternal(self, 
+                                frame: pd.DataFrame, 
+                                options: dict, 
+                                pframe: pd.DataFrame, 
+                                historicalData: pd.DataFrame, 
+                                futureData: pd.DataFrame, 
+                                seasonalityMode: str, 
+                                intervalWidth: float, 
+                                changePointPriorScale: float, 
+                                holidayPriorScale: float, 
+                                changePointFraction: float) -> pd.DataFrame:
+        """
+        This function handles the actual running of the Prophet() function and
+        its interaction with the option dictionary and the frame dataframe. It
+        is called in the forecastProphet() method.
+        
+        ****Add explanation of the "changepoints" concept
+
+        Parameters
+        ----------
+        frame : pd.DataFrame
+            Has all the info necessary for the forecast
+        options : dict
+            Has parameters determining how forecast is to be run
+        pframe : pd.DataFrame
+            Dataframe slice to be the one that the model is trained on
+        historicalData : pd.DataFrame
+            Should be a subset of the frame parameter
+        futureData : pd.DataFrame
+            Should be a subset of the frame parameter, should be the 
+            difference between frame and historicalData
+        seasonalityMode : str
+            In this package this defaults to "multiplicative"
+        intervalWidth : float
+            Width of the uncertainty intervals provided in the forecast
+        changePointPriorScale : float
+            Determines the limit on changepoints. Higher values mean more
+            changepoints will be allowed.
+        holidayPriorScale : float
+            See Prophet() documentation
+        changePointFraction : float
+            Used to determine the number of changepoints
+
+        Returns
+        -------
+        forecast : TYPE
+            Forecast returned by the model
+
+        """
         nChangePoints = math.ceil(len(historicalData) * changePointFraction)
         
         periodicity = params.getParam('periodicity', options) 
@@ -388,7 +488,14 @@ class Forecast:
         weeklySeasonality = (periodicity == 52 or periodicity == 53)
         dailySeasonality = (periodicity == 356)
         
-        model = Prophet(yearly_seasonality=True, daily_seasonality=dailySeasonality, weekly_seasonality=weeklySeasonality, interval_width=intervalWidth, seasonality_mode=seasonalityMode, changepoint_prior_scale=changePointPriorScale, holidays_prior_scale=holidayPriorScale, n_changepoints=nChangePoints)
+        model = Prophet(yearly_seasonality=True, 
+                        daily_seasonality=dailySeasonality, 
+                        weekly_seasonality=weeklySeasonality, 
+                        interval_width=intervalWidth, 
+                        seasonality_mode=seasonalityMode, 
+                        changepoint_prior_scale=changePointPriorScale, 
+                        holidays_prior_scale=holidayPriorScale, 
+                        n_changepoints=nChangePoints)
         
         for pred in params.getParam('predictorColumns', options):
             model.add_regressor(pred)
@@ -419,7 +526,29 @@ class Forecast:
         
         return forecast 
 
-    def forecastProphet(self, frame, options):
+    def forecastProphet(self, frame: pd.DataFrame, options: dict) -> dict:
+        """
+        This is the function where the forecast produced by 
+        forecastProphetInternal() gets integrated into the data we work
+        with. It has two functionalities based on the options['hyptertune']
+        option. When that value is False, it runs forecastProphetInternal()
+        with "vanilla" settings for Prophet(), if True it works through a 
+        grid to get an optimal answer.
+
+        Parameters
+        ----------
+        frame : pd.DataFrame
+            pandas dataframe with all the data we want to use to forecast
+        options : dict
+            dictionary with the necessary specifications
+
+        Returns
+        -------
+        dict
+            dictionary including the MAPE, the data, and the options used
+            to get there
+
+        """
         targetColumn = params.getParam('targetColumn', options)
         newTargetColumn = 'X_' + targetColumn
         
@@ -461,7 +590,16 @@ class Forecast:
             holidays_prior_scale = params.getParam('holidays_prior_scale', options)
             changepoints_fraction = params.getParam('changepoints_fraction', options)
             
-            forecast = self.forecastProphetInternal(frame, options, pframe, historicalData, futureData, 'multiplicative', interval_width, changepoint_prior_scale, holidays_prior_scale, changepoints_fraction)
+            forecast = self.forecastProphetInternal(frame, 
+                                                    options, 
+                                                    pframe, 
+                                                    historicalData, 
+                                                    futureData, 
+                                                    'multiplicative', 
+                                                    interval_width, 
+                                                    changepoint_prior_scale, 
+                                                    holidays_prior_scale, 
+                                                    changepoints_fraction)
         else:
             forecast = None 
             championP = None
@@ -528,7 +666,25 @@ class Forecast:
             
         return fdict
 
-    def forecastARIMA(self, frame, options):
+    def forecastARIMA(self, frame: pd.DataFrame, options: dict) -> dict:
+        """
+        This function makes a forecast based on the ARIMA model. There is some
+        built in autotuning of the parameters for that model, but more info
+        can be gleaned from the pmdarimo package documentation.
+
+        Parameters
+        ----------
+        frame : pd.DataFrame
+            pandas dataframe with the requisite data
+        options : dict
+            dictionary with the necessary keys and values
+
+        Returns
+        -------
+        dict
+            dictionary that includes new data forecast and original data
+
+        """
         targetColumn = params.getParam('targetColumn', options)
         newTargetColumn = 'X_' + targetColumn
         
