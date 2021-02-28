@@ -16,14 +16,54 @@ import traceback
 from statistics import median
 from trilabytePyML.stats.Statistics import calcMAPE
 
-def findMAPE(frame, options, seasonality):
+def findMAPE(frame: pd.DataFrame, options: dict, seasonality: str) -> float:
+    """
+    This function takes the data through the "frame" parameter, takes the 
+    instructions as to how to read the data through the 'options' dictionary
+    parameter, and then takes the seasonality that should be applied to the
+    instance of MLR forecast that forms part of this function.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Data to use in forecast
+    options : dict
+        Options dictionary specifying how to read 'frame'
+    seasonality : str
+        'Additive' or 'Multiplicative'
+
+    Returns
+    -------
+    dict
+        Returns the MAPE on the results of the forecastMLR() forecast and the 
+        actuals column
+
+    """
     options = options.copy()
     options['seasonality'] = seasonality
     model = Forecast()
     return  model.forecastMLR(frame.copy(), options)['MAPE']
 
 
-def findOptimalSeasonality(frame, options):
+def findOptimalSeasonality(frame: pd.DataFrame, options: dict) -> str:
+    """
+    Compares the MAPE as calculated in findMAPE() to determine whether
+    'additive', 'multiplicative', or 'none' is the best seasonality
+    qualifier to apply
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Data to use in forecast
+    options : dict
+        Instructions as to how to read the data
+
+    Returns
+    -------
+    str
+        Will be "None", "Additive", or "Multiplicative"
+
+    """
     nonNullRowCount = frame[params.getParam('targetColumn', options)].count()
     periodicity = params.getParam('periodicity', options)
     
@@ -45,7 +85,29 @@ def findOptimalSeasonality(frame, options):
         return "Multiplicative"
 
 
-def splitFramesAndForecast(frame, options):
+def splitFramesAndForecast(frame: pd.DataFrame, options: dict) -> pd.DataFrame:
+    """
+    Automates forecasting for each subframe defined by the sortColumns options
+    parameter. Will return the forecast using the method with the best MAPE for
+    each subframe. Will also print the MAPEs of each method for each forecast
+    made.
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Data needed for forecast
+    options : dict
+        Instructions on how to read 'frame'
+
+    Returns
+    -------
+    outputFrame : pd.DataFrame
+        Same as original 'frame' but with all the columns associated with a
+        forecast added.
+
+    """
+    #creates a list of frames, each of which will correspond to a different
+    #forecast
     frame.sort_values(by=params.getParam('sortColumns', options), ascending=True, inplace=True)
     
     frames = list(frame.groupby(by=params.getParam('splitColumns', options)))
@@ -58,6 +120,8 @@ def splitFramesAndForecast(frame, options):
             
             method = params.getParam('method', options)
             
+            #specifies actions if the forecast method is set to "Auto" in 
+            #the options dictionary
             if method == 'Auto':
                 opts = options.copy()
                 opts['method'] = 'ARIMA'
@@ -130,7 +194,24 @@ def splitFramesAndForecast(frame, options):
     
     return outputFrame
 
-def forecastSingleFrame(frame, options):
+def forecastSingleFrame(frame: pd.DataFrame, options: dict) -> pd.DataFrame:
+    """
+    Basically the equivalent of splitFramesAndForecast() but for a single frame
+
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Data needed to forecast
+    options : dict
+        Instructions as to how to handle 'frame'
+
+    Returns
+    -------
+    frame : pd.DataFrame
+        The original 'frame' parameter but with additional columns for the
+        forecast.
+
+    """
     try:
         method = params.getParam('method', options)
         currentOptions = options.copy()
@@ -153,7 +234,7 @@ def forecastSingleFrame(frame, options):
     
     except Exception as e:
         ed = str(traceback.format_exc()).replace('\n', ' ')
-        frame['X_ERROR'] = ed
+        frame['X_ERROR'] = e
         frame['X_METHOD'] = method
     
     return frame
